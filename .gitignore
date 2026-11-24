@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+secrets.h
+arduino_secrets.h
+.pio/
+build/
+*.elf
+*.bin
