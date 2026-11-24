@@ -11,7 +11,7 @@ Completar los nombres y confirmar la rotación de revisión antes del minuto 30 
 | Nodo | Responsable | Revisor | Wokwi original | Copia corregida |
 |---|---|---|---|---|
 | [N1-Pozas](N1-Pozas/) | Integrante 1 | Integrante 5 (propuesto) | [Original](https://wokwi.com/projects/481589788453665793) | Por registrar |
-| [N2-Secadores](N2-Secadores/) | Integrante 2 (@educmz) | Integrante 1 | [Original](https://wokwi.com/projects/481589874625672193) | Por registrar |
+| [N2-Secadores](N2-Secadores/) | Integrante 2 (@educmz) | Integrante 1 | [Original](https://wokwi.com/projects/481589874625672193) | [Copia de trabajo](https://wokwi.com/projects/481603469063491585) (sin corregir) |
 | [N3-Perimetro](N3-Perimetro/) | Integrante 3 | Integrante 2 | [Original](https://wokwi.com/projects/481589950905406465) | Por registrar |
 | [N4-Lavador](N4-Lavador/) | Integrante 4 | Integrante 3 | [Original](https://wokwi.com/projects/481590024229204993) | Por registrar |
 | [N5-Gateway](N5-Gateway/) | Integrante 5 (integrador) | Integrante 4 | [Original](https://wokwi.com/projects/481590098239821825) | Por registrar |
