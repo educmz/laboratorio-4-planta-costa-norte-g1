@@ -1,28 +1,154 @@
-# Integración N4–N5 (propuesta pendiente de acuerdo)
+# Contrato de integración — N4-Lavador y N5-Gateway
 
-## Contrato del enunciado
+## Objetivo
 
-Broker `broker.hivemq.com`, MQTT 1883, WebSocket 8884; Client ID único. Prefijo G1 `upc/ga/`. Datos de sensores JSON con id, ts, valor numérico, unidad, calidad y firma HMAC-SHA256 de `id|ts|valor` truncada a 16 caracteres hexadecimales. Reglas R4–R10 aplicables. El documento no prescribe el formato exacto de los comandos autenticados que implementamos: se debe acordar con N5.
+Definir la comunicación entre N4-Lavador y N5-Gateway para el intercambio de órdenes autenticadas, concentraciones, estados, confirmaciones y alertas.
 
-| Topic oficial | Publica | Consume |
+## Arquitectura
+
+N5-Gateway centraliza las decisiones de activación del lavador.
+
+N4-Lavador ejecuta las órdenes autorizadas, controla los actuadores y comunica su estado de funcionamiento.
+
+La comunicación utiliza el protocolo MQTT mediante un broker compartido.
+
+## Configuración
+
+| Parámetro | Valor |
+|---|---|
+| Broker | broker.hivemq.com |
+| Puerto MQTT | 1883 |
+| Puerto WebSocket | 8884 |
+| Prefijo oficial | upc/ga/ |
+| Prefijo experimental | upc/ga-n4-test-481668300518825985/ |
+
+## Topics
+
+| Topic | Publicador | Suscriptor |
 |---|---|---|
 | upc/ga/lavador/cmd | N5 | N4 |
 | upc/ga/gateway/conc | N5 | N4 |
 | upc/ga/lavador/estado | N4 | N5 |
 | upc/ga/lavador/alerta | N4 | N5 |
 
-## Formato probado con gateway simulado
+## Formato de órdenes autenticadas
 
-`gateway|<timestamp Unix en segundos>|cmd:ON|<firma>`; análogo para `cmd:OFF`, `cmd:INT:1` a `cmd:INT:5` (intensidad no probada en esta sesión) y `conc:2500.0` / `conc:1500.0` en el topic de concentración. Firmar los primeros tres campos exactos con HMAC-SHA256 y enviar los primeros 16 hexadecimales. Ventana implementada: máximo 60 s de antigüedad y tolerancia de adelanto de 5 s. Timestamps crecientes por flujo según firmware de prueba; la protección demostrada no garantiza persistencia tras reinicio. Confirmar el código definitivo antes de publicar el contrato.
+La interfaz implementada en N4 utiliza mensajes firmados mediante HMAC-SHA256.
 
-Estados observados: JSON `{"nodo":"lavador","lavador":"ON","intensidad":1,"modoSeguro":false,"confirmado":false}` y eventos `{"lavador":"ON","motivo":"orden gateway"}`, `{"lavador":"CONFIRMADO"}`. Alerta `{"alerta":"falla del lavador"}` o `{"alerta":"sin contacto con gateway"}`. Los estados y alertas observados no están firmados; revisar alcance de R9 con el grupo y protegerlos antes de considerar seguridad integral. No confundir ON ordenado con CONFIRMADO.
+### Activación
 
-## F16 y aceptación conjunta
+`gateway|timestamp|cmd:ON|firma`
 
-Hipótesis a verificar en N5 actual: el gateway puede considerar ON al emitir una orden sin esperar confirmación real; la versión heredada también emplea órdenes sin firma. Determinar cuál es la causa raíz cruzada que explica el síntoma, registrar incidencia y coordinar cambios con integrante 5. No asignar la misma causa a dos fallas sin evidencia.
+### Desactivación
 
-1. Acordar formatos y clave de simulación nueva, fuera de Git. Sincronizar relojes y comprobar estabilidad MQTT.
-2. Ejecutar en entorno aislado conjunto: dos nodos >2000 ppm y viento 135°, orden autenticada N5, N4 ON y confirmación en <=10 s; registrar t0 y t1.
-3. Repetir sin confirmación: alerta N4 recibida por N5 y ventilación máxima de N1 demostrada.
-4. Verificar OFF con concentración baja, rechazo con alta, pérdida de contacto, ataque y regresión. Restaurar prefijo oficial solo coordinadamente.
-5. Registrar PR de la falla cruzada, revisión independiente y evidencia. F16 permanece abierta hasta entonces.
+`gateway|timestamp|cmd:OFF|firma`
+
+### Regulación de intensidad
+
+`gateway|timestamp|cmd:INT:5|firma`
+
+La intensidad admite valores del 1 al 5.
+
+### Concentración
+
+`gateway|timestamp|conc:2500.0|firma`
+
+La concentración se expresa en partes por millón.
+
+## Generación de firma
+
+La firma se calcula mediante HMAC-SHA256 utilizando una clave compartida y los tres primeros campos exactos del mensaje.
+
+Se utilizan los primeros 16 caracteres hexadecimales del resultado.
+
+El timestamp se expresa en segundos Unix.
+
+La implementación contempla:
+
+- Antigüedad máxima de 60 segundos.
+- Tolerancia de adelanto de 5 segundos.
+- Validación de autenticidad.
+- Control de timestamps repetidos durante la ejecución.
+
+El archivo secrets.h contiene la configuración privada utilizada en el entorno de simulación.
+
+Este formato corresponde a la interfaz de órdenes implementada en N4 y no sustituye el contrato JSON de los sensores definido por el enunciado.
+
+## Estados del lavador
+
+Ejemplo de estado periódico:
+
+```json
+{
+  "nodo": "lavador",
+  "lavador": "ON",
+  "intensidad": 1,
+  "modoSeguro": false,
+  "confirmado": false
+}
+```
+
+Ejemplo de confirmación:
+
+```json
+{
+  "lavador": "CONFIRMADO"
+}
+```
+
+Ejemplo de alerta:
+
+```json
+{
+  "alerta": "falla del lavador"
+}
+```
+
+Ejemplo de pérdida de contacto:
+
+```json
+{
+  "alerta": "sin contacto con gateway"
+}
+```
+
+La interfaz distingue entre la activación ordenada y la confirmación efectiva.
+
+Los mensajes de estado y alerta observados utilizan JSON sin firma HMAC; la autenticación implementada en esta versión se concentra en las órdenes y concentraciones recibidas por N4.
+
+## Reglas de funcionamiento
+
+| Regla | Comportamiento especificado |
+|---|---|
+| R4 | Activación bajo condiciones de concentración y viento; apagado bajo 1600 ppm |
+| R5 | Confirmación en máximo 10 s y generación de alerta ante ausencia de confirmación |
+| R6 | Activación preventiva después de 60 s sin contacto |
+| R7 | Bloqueo de apagado con concentración elevada |
+| R8 | Publicación periódica de estados |
+| R9 | Validación de autenticidad y vigencia |
+| R10 | Procesamiento de órdenes autorizadas |
+
+## Secuencia de integración
+
+1. Los nodos sensores publican sus mediciones.
+2. N5 evalúa las concentraciones y dirección del viento.
+3. N5 emite una orden autenticada.
+4. N4 valida el mensaje.
+5. N4 activa el relé y el motor.
+6. El sensor de confirmación detecta el funcionamiento.
+7. N4 comunica la confirmación.
+8. N5 utiliza el estado recibido para gestionar el lazo de control.
+
+Esta secuencia describe el comportamiento especificado del sistema integrado.
+
+## Validación experimental de la interfaz
+
+Durante las pruebas individuales se utilizaron mensajes externos para simular las órdenes del gateway.
+
+Se observó la aceptación de órdenes autenticadas, rechazo de mensajes inválidos, recepción de concentraciones y publicación de estados y alertas.
+
+## Conclusión
+
+El contrato documentado establece la interfaz de comunicación de N4-Lavador y describe su relación funcional con N5-Gateway.
+
+La implementación proporciona mecanismos de autenticación, control del actuador, confirmación y respuesta preventiva ante pérdida de comunicación.

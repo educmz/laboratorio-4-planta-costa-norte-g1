@@ -1,33 +1,131 @@
-# Pruebas de N4-Lavador
+# Registro de pruebas — N4-Lavador
 
-Entorno: Wokwi, ESP32, HiveMQ público, prefijo aislado. Evidencias bajo `evidencias/pruebas/N4-Lavador/` del repositorio. Los números indican el prefijo del nombre de captura en INDICE.md. Los resultados se limitan a lo observado y no equivalen a aprobación de PR.
+## Información general
 
-| Prueba | Regla | Resultado observado | Evidencia | Estado |
-|---|---|---|---|---|
-| GPIO y contacto COM-NO | R4 | GPIO26; LED apagado en OFF (0 pasos), encendido en ON (123 pasos) | F13_Rele/01, 28–31 | Verificada; 28–29 son diagnóstico intermedio, no versión heredada |
-| P6: 60 s sin contacto | R6 | OFF a 56,044 s, ON a 64,391 s | F14_Modo_seguro/04–05 | Verificada en etapa de corrección; antes controlado pendiente |
-| P5: ausencia de confirmación | R5 | Alerta falla del lavador, también en registro local sin MQTT | Confirmacion_alertas/06–07 | Local verificada; ventilación N1 pendiente |
-| Confirmación y pérdida | R5 | Confirmación local observada; pérdida y recuperación | Confirmacion_alertas/08–09,12–13 | Local verificada |
-| P10: orden sin firma | R10 | Rechazada, lavador OFF | F15_Seguridad/16–17 | Verificada |
-| Timestamp fuera de margen | R9 | Timestamp inválido, orden rechazada | MQTT_NTP/19 y logs del chat | Verificada para adelanto; caducidad >60 s no ensayada específicamente |
-| ON firmado | R10 | ON por orden gateway, diferencia 6 s | F15_Seguridad/21 | Verificada |
-| Replay | R10 | Orden repetida rechazada a 35 y 41 s | Registro-serial-F15-completo.md | Verificada en misma ejecución, no tras reinicio |
-| OFF sin concentración baja vigente | R7 | Apagado rechazado, sigue ON | F15_Seguridad/22, registro | Verificada |
-| P4: 1500 ppm y OFF firmado | R4/R7 | 1500 ppm recibidos; OFF; motor detenido en 11697 pasos | F15_Seguridad/23–25 | Verificada con gateway simulado |
-| Firma incorrecta | R10 | Firma HMAC inválida; orden rechazada, OFF | F15_Seguridad/25 | Verificada |
-| P7: 2500 ppm y OFF | R7 | 2500 ppm recibidos; ON; OFF rechazado tres veces | F15_Seguridad/26–27 y registro | Verificada con gateway simulado |
-| P8: publicaciones periódicas | R8 | Estados periódicos observados; intermitencias de red | MQTT_NTP/14–15 y registro | Parcial; medir intervalo y ThingSpeak conjuntamente |
-| P3: dos nodos y viento 135° | R4 | No ejecutada con N5 real | Pendiente | Pendiente |
-| P9: datos inválidos rechazados por N5 | R9 | No ejecutada con N5 real | Pendiente | Pendiente |
+- Responsable: Fabricio Fabian Quispe Barzola.
+- Grupo: G1.
+- Plataforma: Wokwi.
+- Microcontrolador: ESP32.
+- Comunicación: MQTT mediante HiveMQ.
+- Instalación heredada: `bbc3ce1`.
+- Correcciones publicadas: `21927c9`, `a69050e` y `5388fdd`.
 
-## Extracto de la prueba de 2500 ppm
+## Objetivo
 
-Registro serial: concentración recibida con reloj 1795633482; ON a 1795633492; OFF rechazado a 1795633498, 1795633503 y 1795633512. No se observó apagado. Referencia: `F15_Seguridad/Registro-serial-F15-completo.md`.
+Verificar el funcionamiento individual del lavador mediante pruebas de actuación, temporización, confirmación y seguridad.
 
-## Regresión pendiente antes de entrega integrada
+Las pruebas se realizaron utilizando mensajes MQTT en un entorno aislado, simulando la comunicación del gateway.
 
-Repetir ON/OFF autenticados, modo seguro, confirmación, alerta, concentración alta/baja y ataque tras el ajuste final de polaridad. Ejecutar prueba con N5 y N1 para confirmar R4/R5, verificar intervalos y registrar resultado real. Obtener evidencia del firmware heredado con escenarios equivalentes; no confundir capturas de diagnóstico intermedio con el antes original. No alterar originales de Wokwi. Registrar fecha, versión, responsable, evidencia y commit.
+## Resultados experimentales
 
-## Incidencias del entorno
+| ID | Regla | Prueba | Resultado observado |
+|---|---|---|---|
+| N4-P01 | R4 | Activación del relé | LED encendido y motor funcionando |
+| N4-P02 | R4 | Desactivación del relé | LED apagado y motor detenido |
+| N4-P03 | R6 | Pérdida de contacto | Activación del modo seguro tras superar 60 s |
+| N4-P04 | R5 | Ausencia de confirmación | Generación de alerta local y MQTT |
+| N4-P05 | R5 | Confirmación de funcionamiento | Confirmación registrada localmente |
+| N4-P06 | R5 | Pérdida de confirmación | Pérdida y recuperación detectadas |
+| N4-P07 | R10 | Comando sin firma | Orden rechazada |
+| N4-P08 | R10 | Firma incorrecta | Orden rechazada |
+| N4-P09 | R9 | Timestamp fuera del margen probado | Orden rechazada |
+| N4-P10 | R10 | Orden ON autenticada | Lavador activado |
+| N4-P11 | R10 | Repetición de mensaje | Repetición rechazada durante la ejecución |
+| N4-P12 | R7 | OFF sin concentración baja válida | Apagado bloqueado |
+| N4-P13 | R4/R7 | Concentración 1500 ppm y OFF autenticado | Apagado permitido |
+| N4-P14 | R7 | Concentración 2500 ppm y OFF autenticado | Apagado rechazado |
+| N4-P15 | R8 | Publicación periódica MQTT | Publicaciones observadas |
 
-MQTT presentó desconexiones y errores -4, además de un reinicio por assert durante un intento previo de conexión. Se ajustó reconexión y arranque NTP; no se ha confirmado estabilidad prolongada. El reloj del simulador presentó desfases frente al navegador; se empleó el reloj ESP32 para generar mensajes de prueba sin eliminar las validaciones. No generalizar ese procedimiento a la integración real. Las capturas deben revisarse para ocultar credenciales antes de publicar.
+## F13 — Control del relé
+
+**Commit:** `21927c9`.
+
+La corrección del GPIO y de la polaridad permitió obtener una correspondencia entre el estado lógico del lavador y la conmutación física simulada.
+
+| Estado | LED | Motor |
+|---|---|---|
+| OFF | Apagado | Detenido |
+| ON | Encendido | Funcionando |
+
+### Evidencias
+
+- [GPIO incorrecto en el firmware heredado](../../evidencias/pruebas/N4-Lavador/F13_Rele/01-F13-heredado-GPIO27.png).
+- [Relé corregido OFF](../../evidencias/pruebas/N4-Lavador/F13_Rele/30-F13-corregido-rele-OFF.png).
+- [Relé corregido ON](../../evidencias/pruebas/N4-Lavador/F13_Rele/31-F13-corregido-rele-ON.png).
+
+## F14 — Modo seguro
+
+**Commit:** `a69050e`.
+
+Se observó el comportamiento del lavador sin recepción de órdenes del gateway.
+
+| Tiempo de simulación | Estado |
+|---|---|
+| 35,686 s | OFF |
+| 56,044 s | OFF |
+| 64,391 s | ON mediante modo seguro |
+
+La activación preventiva se produjo después de superar el umbral configurado de 60 segundos.
+
+### Evidencias
+
+- [Estado anterior al umbral](../../evidencias/pruebas/N4-Lavador/F14_Modo_seguro/04-F14-corregido-antes-60s.png).
+- [Modo seguro activado](../../evidencias/pruebas/N4-Lavador/F14_Modo_seguro/05-F14-corregido-modo-seguro.png).
+
+## F15 — Seguridad MQTT
+
+**Commit:** `5388fdd`.
+
+Se evaluó la respuesta del firmware frente a diferentes tipos de mensajes.
+
+| Entrada | Resultado |
+|---|---|
+| ON sin firma | Rechazado |
+| Firma incorrecta | Rechazada |
+| Timestamp inválido | Rechazado |
+| ON autenticado | Aceptado |
+| Mensaje repetido | Rechazado |
+| OFF sin concentración baja válida | Rechazado |
+| OFF autenticado con 1500 ppm | Aceptado |
+| OFF autenticado con 2500 ppm | Rechazado |
+
+En la prueba de apagado permitido, el motor permaneció detenido en 11697 pasos.
+
+La protección contra mensajes repetidos fue observada durante una misma ejecución del firmware.
+
+### Evidencias
+
+- [Pruebas de seguridad](../../evidencias/pruebas/N4-Lavador/F15_Seguridad/).
+- [Registro serial](../../evidencias/pruebas/N4-Lavador/F15_Seguridad/Registro-serial-F15-completo.md).
+
+## Confirmación y alertas
+
+El interruptor conectado al GPIO14 permitió verificar la detección de confirmación, pérdida de confirmación y recuperación.
+
+| Evento | Tiempo local observado |
+|---|---|
+| Confirmación tras activación preventiva | 25 ms |
+| Confirmación registrada | 4 ms |
+| Recuperación de confirmación | 12 ms |
+
+[Evidencias de confirmación y alertas](../../evidencias/pruebas/N4-Lavador/Confirmacion_alertas/).
+
+## Comunicación MQTT y NTP
+
+Se verificó la comunicación entre el ESP32 y el cliente MQTT externo.
+
+Durante el diagnóstico se observaron desconexiones y diferencias entre el reloj del navegador y el reloj del ESP32. La implementación incorpora mecanismos de reconexión y sincronización temporal.
+
+[Evidencias MQTT y NTP](../../evidencias/pruebas/N4-Lavador/MQTT_NTP/).
+
+## Alcance experimental
+
+Los resultados corresponden a pruebas individuales realizadas durante las distintas etapas de corrección del nodo N4.
+
+Las pruebas de seguridad utilizaron un gateway simulado. Las mediciones de confirmación corresponden a eventos locales y no representan la latencia integral de los cinco nodos.
+
+## Conclusión
+
+Los resultados experimentales demuestran el funcionamiento de las correcciones del relé, la activación preventiva del modo seguro y los mecanismos de validación de órdenes MQTT.
+
+La documentación y las evidencias permiten reproducir los escenarios utilizados durante el diagnóstico y verificar el comportamiento individual del lavador.

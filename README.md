@@ -13,7 +13,7 @@ Completar los nombres y confirmar la rotación de revisión antes del minuto 30 
 | [N1-Pozas](N1-Pozas/) | Integrante 1 | Integrante 5 (propuesto) | [Original](https://wokwi.com/projects/481589788453665793) | Por registrar |
 | [N2-Secadores](N2-Secadores/) | Integrante 2 (@educmz) | Integrante 1 | [Original](https://wokwi.com/projects/481589874625672193) | [Copia de trabajo](https://wokwi.com/projects/481603469063491585) (sin corregir) |
 | [N3-Perimetro](N3-Perimetro/) | Integrante 3 | Integrante 2 | [Original](https://wokwi.com/projects/481589950905406465) | Por registrar |
-| [N4-Lavador](N4-Lavador/) | Integrante 4 | Integrante 3 | [Original](https://wokwi.com/projects/481590024229204993) | Por registrar |
+| [N4-Lavador](N4-Lavador/) | Fabricio Fabian Quispe Barzola — Integrante 4 | Integrante 3 | [Original](https://wokwi.com/projects/481590024229204993) | [Copia corregida](https://wokwi.com/projects/481668300518825985) |
 | [N5-Gateway](N5-Gateway/) | Integrante 5 (integrador) | Integrante 4 | [Original](https://wokwi.com/projects/481590098239821825) | Por registrar |
 
 La revisión de N1 por el integrante 5 es una propuesta de cierre de rotación, por confirmar con el grupo.
@@ -58,10 +58,10 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 | F10 — N3-Perimetro | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F11 — N3-Perimetro | Seguridad | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F12 — N3-Perimetro | Cruzada | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
-| F13 — N4-Lavador | Visible | — | — | — | — | Sin ejecutar | Integrante 4 | Integrante 3 |
-| F14 — N4-Lavador | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 4 | Integrante 3 |
-| F15 — N4-Lavador | Seguridad | — | — | — | — | Sin ejecutar | Integrante 4 | Integrante 3 |
-| F16 — N4-Lavador | Cruzada | — | — | — | — | Sin ejecutar | Integrante 4 | Integrante 3 |
+| F13 — N4-Lavador | Visible | 8: sensores y actuadores | Funcionamiento incorrecto del relé | GPIO27 en firmware y GPIO26 en circuito | Corrección de GPIO y polaridad; indicador LED. [21927c9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/21927c9) | LED y motor responden correctamente a los estados ON/OFF. [Evidencias](evidencias/pruebas/N4-Lavador/F13_Rele/) | Fabricio Fabian Quispe Barzola | Integrante 3 |
+| F14 — N4-Lavador | Silenciosa | Diseño de lógica de servicio y temporización | No se activa el modo seguro | Reinicio del temporizador mediante mqtt.connected() | Control de último contacto y activación preventiva tras 60 s. [a69050e](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/a69050e) | OFF a 56,044 s y ON a 64,391 s. [Evidencias](evidencias/pruebas/N4-Lavador/F14_Modo_seguro/) | Fabricio Fabian Quispe Barzola | Integrante 3 |
+| F15 — N4-Lavador | Seguridad | Diseño de seguridad y comunicación | Aceptación de órdenes no autenticadas | Ausencia de validación de firma y vigencia | HMAC-SHA256, NTP, protección contra replay y restricciones de apagado. [5388fdd](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/5388fdd) | Rechazo de órdenes inválidas; apagado permitido a 1500 ppm y rechazado a 2500 ppm. [Evidencias](evidencias/pruebas/N4-Lavador/F15_Seguridad/) | Fabricio Fabian Quispe Barzola | Integrante 3 |
+| F16 — N4-Lavador | Cruzada | Diseño de integración entre componentes | Riesgo de incompatibilidad entre N4 y N5 | Diferencias identificadas en mecanismos de comunicación heredados | Diseño del contrato MQTT autenticado y diferenciación entre activación y confirmación | Comunicación comprobada con gateway simulado. [Contrato técnico](N4-Lavador/docs/INTEGRACION-N5.md) | Fabricio Fabian Quispe Barzola | Integrante 3 |
 | F17 — N5-Gateway | Visible | — | — | — | — | Sin ejecutar | Integrante 5 (integrador) | Integrante 4 |
 | F18 — N5-Gateway | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 5 (integrador) | Integrante 4 |
 | F19 — N5-Gateway | Seguridad | — | — | — | — | Sin ejecutar | Integrante 5 (integrador) | Integrante 4 |

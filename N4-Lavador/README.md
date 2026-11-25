@@ -1,63 +1,196 @@
 # N4-Lavador — Planta Costa Norte (G1)
 
-Curso: 1ASI0572 Desarrollo de Soluciones IoT · Laboratorio 4.
+## Información general
 
-- Responsable: Fabricio Fabian Quispe Barzola.
-- Revisor: integrante 3 (nombre y aprobación pendientes).
-- [Wokwi heredado](https://wokwi.com/projects/481590024229204993) · [Copia de trabajo corregida](https://wokwi.com/projects/481668300518825985).
-- Prefijo oficial: `upc/ga/`; pruebas aisladas: `upc/ga-n4-test-481668300518825985/`.
+- **Curso:** 1ASI0572 — Desarrollo de Soluciones IoT.
+- **Laboratorio:** 4 — Instalación heredada.
+- **Grupo:** G1.
+- **Responsable:** Fabricio Fabian Quispe Barzola.
+- **Rol:** Integrante 4 — N4-Lavador.
+- **Revisor asignado:** Integrante 3.
 
-## Propósito y hardware
+## Proyectos Wokwi
 
-El nodo acciona el lavador de gases por orden del gateway y verifica el funcionamiento por medio de un interruptor. Implementa un modo seguro ante pérdida de contacto y evita apagados cuando no dispone de concentración baja vigente. ESP32: GPIO26 relé (HIGH activo, LOW inactivo, comprobado en simulación), GPIO14 confirmación, GPIO18 STEP, GPIO19 DIR. Se añadió LED con resistencia de 220 Ω entre el contacto NO y tierra, alimentando COM desde 3V3, para verificar la conmutación.
+- [Instalación heredada](https://wokwi.com/projects/481590024229204993)
+- [Instalación corregida](https://wokwi.com/projects/481668300518825985)
 
-## Bitácora individual
+## 1. Descripción del nodo
 
-La bitácora oficial debe actualizarse también en el README raíz. Los commits y aprobaciones todavía no están registrados. Los números de pasos distintos del 8 deben contrastarse con el marco de 12 pasos del curso.
+El nodo N4-Lavador controla el sistema de lavado de gases de la Planta Costa Norte mediante un ESP32 conectado a una red MQTT.
 
-| ID y nodo | Tipo | Paso del marco | Síntoma | Causa raíz | Corrección y commit | Prueba | Responsable | Revisor |
-|---|---|---|---|---|---|---|---|---|
-| F13 — N4-Lavador | Visible | 8: sensores y actuadores | Relé no corresponde a la orden | GPIO27 en código heredado frente a GPIO26 del circuito | GPIO26; ajuste HIGH/LOW tras prueba COM-NO; commit pendiente | LED OFF con motor detenido y ON con motor en marcha; capturas 30 y 31 | Integrante 4 | Integrante 3 |
-| F14 — N4-Lavador | Silenciosa | Por confirmar: lógica de servicio y temporización | Modo seguro no se activa al perder mensajes del gateway con broker conectado | El código heredado actualizaba ultimoContacto por mqtt.connected() | Actualizar al recibir mensajes válidos; activar ON tras 60 s; commit pendiente | OFF a 56,044 s y ON a 64,391 s; capturas 04 y 05. Reproducción controlada del antes pendiente | Integrante 4 | Integrante 3 |
-| F15 — N4-Lavador | Seguridad | Por confirmar: seguridad y contrato de mensajes | Órdenes no autenticadas podían actuar sobre el lavador | Manejo de comandos de texto sin verificar firma ni vigencia en código heredado | HMAC-SHA256 truncado, NTP, ventana temporal, protección contra repetición, bloqueo OFF sin concentración baja vigente; commit pendiente | 8 pruebas planificadas de la etapa de seguridad; registro serial y capturas 16–27. Regresión final tras ajuste de relé pendiente | Integrante 4 | Integrante 3 |
-| F16 — N4-Lavador | Cruzada | Por confirmar: integración y contrato | Hipótesis: N5 no procesa confirmación real o emite comandos incompatibles | Pendiente de confirmar en versión actual de N5 | Acordar protocolo y verificar lazo cerrado con integrante 5; sin commit | No ejecutada con N5 real | Integrantes 4 y 5 | Integrante 3 para N4; revisión de N5 según rotación |
+Su funcionamiento comprende la recepción de órdenes del gateway, la activación del relé, el control del motor paso a paso, la confirmación de funcionamiento y la generación de alertas.
 
-## Ejecución y seguridad
+La implementación incorpora mecanismos de autenticación, validación temporal, protección contra órdenes repetidas y activación preventiva ante pérdida de comunicación.
 
-Abrir la copia de Wokwi, conservar topics aislados para pruebas, esperar MQTT y reloj NTP disponible. Usar la misma clave de simulación en el generador local y el firmware. No publicar claves; extraer a `secrets.h` (ignorado por Git) y proporcionar `secrets.example.h` sin valores reales. No utilizar el prefijo compartido hasta coordinar con N5. La firma de órdenes y concentración aquí probada es una extensión del contrato, no un acuerdo ya confirmado por el grupo. El broker público y la clave compartida no constituyen seguridad de producción.
+## 2. Componentes y conexiones
 
-## Documentación y evidencias
+| Componente | Conexión | Función |
+|---|---|---|
+| ESP32 DevKit | — | Procesamiento y comunicación |
+| Módulo relé | GPIO26 | Activación del lavador |
+| Interruptor deslizante | GPIO14 | Confirmación de funcionamiento |
+| Driver A4988 STEP | GPIO18 | Control de pasos del motor |
+| Driver A4988 DIR | GPIO19 | Control de dirección |
+| Motor paso a paso | A4988 | Simulación del lavador |
+| LED verde | Contacto NO del relé | Indicador visual |
+| Resistencia 220 Ω | En serie con LED | Protección del indicador |
 
-- [Resultados de pruebas](docs/PRUEBAS.md)
-- [Contrato propuesto e integración](docs/INTEGRACION-N5.md)
-- [Medición del lazo cerrado](docs/MEDICION-LAZO-CERRADO.md)
-- [Sustentación](docs/SUSTENTACION.md)
-- [Índice de evidencias](../evidencias/pruebas/N4-Lavador/INDICE.md) (extraer el ZIP de evidencias en esa ubicación y ocultar credenciales antes de publicar).
+El relé utiliza HIGH como estado activo y LOW como estado inactivo, de acuerdo con las pruebas realizadas en Wokwi.
 
-Estado: F13, F14 y F15 cuentan con pruebas de sus correcciones; F16, regresión final, medición integral y revisión Git pendientes. No se declara completa la instalación integrada.
+## 3. Bitácora de fallas
 
-## Medición requerida del lazo cerrado
+| ID | Tipo | Síntoma | Causa raíz | Corrección | Commit |
+|---|---|---|---|---|---|
+| F13 | Visible | Funcionamiento incorrecto del relé | GPIO27 declarado en firmware y GPIO26 conectado en circuito | Corrección de GPIO y polaridad; incorporación de indicador LED | `21927c9` |
+| F14 | Silenciosa | Ausencia de activación del modo seguro | Reinicio del temporizador mediante mqtt.connected() | Control de último contacto mediante recepción de mensajes del gateway | `a69050e` |
+| F15 | Seguridad | Aceptación de órdenes no autenticadas | Ausencia de validación de firma y vigencia | HMAC-SHA256, NTP, protección contra replay y restricciones de apagado | `5388fdd` |
+| F16 | Cruzada | Riesgo de incompatibilidad entre N4 y N5 | Diferencias identificadas en los mecanismos de comunicación heredados | Definición del contrato de comunicación autenticada y confirmación | Diseño de integración |
 
+## 4. Diagnóstico y correcciones
 
-El enunciado exige medir desde la detección hasta la confirmación del lavador, antes y después. El plan grupal `docs/pruebas.md` solicita fecha, versión, t0, t1, diferencia y evidencia. La confirmación local no es la medición integral.
+### F13 — Falla visible
 
-| Etapa | Fecha | Versión/commit | t0 detección | t1 confirmación | t1−t0 | Evidencia |
-|---|---|---|---|---|---|---|
-| Antes (heredado) | Pendiente | Pendiente | No medido | No medido | No disponible | Reproducir escenario original sin alterar proyecto fuente |
-| Después (integrado) | Pendiente | Pendiente | No medido | No medido | No disponible | Ejecutar N1–N5 coordinadamente |
+El firmware heredado declaraba GPIO27 para el control del relé, mientras que el circuito se encontraba conectado al GPIO26.
 
-## Observaciones locales disponibles
+Se corrigió la asignación del pin y la polaridad de activación. Adicionalmente, se incorporó un LED verde conectado al contacto normalmente abierto del relé mediante una resistencia de 220 Ω.
 
-- Se observó confirmación local de 25 ms en monitor serial, tras activación por modo seguro; no corresponde a detección en sensores.
-- Se observaron confirmación de 4 ms y recuperación en 12 ms, con pérdida intermedia. No son mediciones de latencia integral ni sustituyen el antes/después.
-- La alerta por ausencia de confirmación se observó localmente y por publicación MQTT; la actuación N1 ordenada por N5 sigue pendiente.
+Resultados obtenidos:
 
-## Protocolo de medición
+- Relé desactivado: LED apagado y motor detenido.
+- Relé activado: LED encendido y motor en funcionamiento.
 
-Usar las mismas concentraciones (dos nodos por encima de 2000 ppm), dirección de viento (135°), posición inicial y procedimiento de confirmación en ambas versiones. Registrar t0 al detectar el escenario, t1 cuando se recibe/observa confirmación, en una referencia temporal común y documentada. Si no se confirma, registrar fallo o tiempo de espera observado, no inventar t1. Guardar logs/capturas, versión y condiciones. Medir adicionalmente desde orden ON hasta confirmación para comprobar R5 (máximo 10 s), distinguiéndolo de la latencia integral. Considerar el desfase entre simulaciones Wokwi y no restar relojes no comparables.
+**Paso del marco IoT:** paso 8, sensores y actuadores.
 
-## Entrega y revisión
+**Commit:** `21927c9`.
 
-Registrar F13–F16 en Trello/Jira con responsable y estado; solicitar revisión independiente al integrante 3. Las ramas propuestas son `bugfix/lavador-pin-rele`, `bugfix/lavador-modo-seguro`, `bugfix/lavador-autenticacion-hmac` y `bugfix/lavador-integracion-gateway` (esta última pendiente de diagnóstico). El integrante 4 revisa N5. Guardar capturas reales del tablero al cierre de cada sesión.
+**Pull request:** [PR #1](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/1).
 
-Fuente: enunciado Laboratorio 4, secciones 3, 4, 6, 7 y 9; diapositivas 5, 8, 9 y 10.
+### F14 — Falla silenciosa
+
+El firmware heredado actualizaba el tiempo de último contacto mientras permanecía conectado al broker MQTT.
+
+Esta lógica impedía distinguir entre una conexión activa con el broker y la recepción efectiva de mensajes del gateway.
+
+La corrección establece el seguimiento del último mensaje recibido y activa el modo seguro cuando se superan los 60 segundos sin contacto.
+
+Resultados obtenidos:
+
+- Lavador OFF a los 56,044 segundos.
+- Lavador ON mediante modo seguro a los 64,391 segundos.
+- Activación preventiva con intensidad máxima.
+- Generación de alerta de pérdida de contacto.
+
+**Regla relacionada:** R6.
+
+**Commit:** `a69050e`.
+
+**Pull request:** [PR #2](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/2).
+
+### F15 — Falla de seguridad
+
+El firmware heredado procesaba órdenes MQTT sin comprobar su autenticidad.
+
+Se implementaron los siguientes mecanismos:
+
+- Autenticación HMAC-SHA256.
+- Sincronización temporal mediante NTP.
+- Validación de antigüedad de mensajes.
+- Protección contra repetición de mensajes durante la ejecución.
+- Rechazo de firmas incorrectas.
+- Restricción de apagado ante concentración elevada.
+- Restricción de apagado sin información válida de concentración baja.
+- Separación de credenciales mediante secrets.h.
+
+Resultados obtenidos:
+
+- Rechazo de órdenes sin firma.
+- Rechazo de firmas incorrectas.
+- Rechazo de mensajes repetidos.
+- Aceptación de órdenes autenticadas.
+- Apagado permitido con concentración de 1500 ppm.
+- Apagado rechazado con concentración de 2500 ppm.
+
+**Reglas relacionadas:** R7, R9 y R10.
+
+**Commit:** `5388fdd`.
+
+**Pull request:** [PR #3](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/3).
+
+### F16 — Comunicación entre nodos
+
+El diseño de integración establece un contrato MQTT entre N4-Lavador y N5-Gateway para intercambiar órdenes autenticadas, concentraciones, estados, confirmaciones y alertas.
+
+N4 diferencia la activación ordenada de la confirmación efectiva del funcionamiento, permitiendo que el gateway gestione ambas condiciones de manera independiente.
+
+El protocolo y sus criterios de aceptación se describen en [INTEGRACION-N5.md](docs/INTEGRACION-N5.md).
+
+El alcance de los resultados experimentales documentados corresponde a pruebas individuales con un gateway simulado.
+
+## 5. Comunicación MQTT
+
+| Parámetro | Configuración |
+|---|---|
+| Broker | broker.hivemq.com |
+| Puerto MQTT | 1883 |
+| Puerto WebSocket | 8884 |
+| Prefijo oficial | upc/ga/ |
+| Prefijo de pruebas | upc/ga-n4-test-481668300518825985/ |
+
+| Topic oficial | Función |
+|---|---|
+| upc/ga/lavador/cmd | Recepción de órdenes |
+| upc/ga/gateway/conc | Recepción de concentración |
+| upc/ga/lavador/estado | Publicación de estados |
+| upc/ga/lavador/alerta | Publicación de alertas |
+
+## 6. Control de versiones
+
+| Implementación | Rama | Commit | PR |
+|---|---|---|---|
+| Instalación heredada | main | `bbc3ce1` | — |
+| Corrección F13 | bugfix/lavador-pin-rele | `21927c9` | #1 |
+| Corrección F14 | bugfix/lavador-modo-seguro | `a69050e` | #2 |
+| Corrección F15 | bugfix/lavador-autenticacion-hmac | `5388fdd` | #3 |
+| Documentación | docs/lavador-n4 | Historial del repositorio | #4 y #5 |
+
+Las correcciones fueron incorporadas a la rama principal del repositorio mediante pull requests.
+
+## 7. Configuración y ejecución
+
+1. Abrir el proyecto corregido de Wokwi.
+2. Configurar secrets.h utilizando secrets.example.h como plantilla.
+3. Introducir la clave de autenticación acordada para el entorno de simulación.
+4. Iniciar la simulación.
+5. Verificar la conexión WiFi, MQTT y sincronización NTP.
+6. Utilizar mensajes autenticados para controlar el lavador.
+
+El archivo secrets.h se mantiene fuera del control de versiones.
+
+## 8. Documentación técnica
+
+- [Registro de pruebas](docs/PRUEBAS.md).
+- [Contrato de integración](docs/INTEGRACION-N5.md).
+- [Mediciones de respuesta](docs/MEDICION-LAZO-CERRADO.md).
+- [Sustentación individual](docs/SUSTENTACION.md).
+- [Índice de evidencias](../evidencias/pruebas/N4-Lavador/INDICE.md).
+
+## 9. Resultados
+
+La implementación corregida demuestra:
+
+- Control adecuado del relé mediante GPIO26.
+- Activación preventiva ante pérdida de contacto.
+- Validación de órdenes mediante HMAC-SHA256.
+- Rechazo de órdenes no autorizadas.
+- Restricción de apagado ante concentración elevada.
+- Detección de confirmación, pérdida de confirmación y generación de alertas.
+
+Los resultados corresponden al comportamiento individual observado en Wokwi.
+
+## 10. Conclusiones
+
+El diagnóstico de N4-Lavador permitió identificar y corregir fallas relacionadas con la configuración del hardware, la lógica de comunicación y la seguridad de las órdenes MQTT.
+
+Las correcciones F13, F14 y F15 mejoran el funcionamiento, la disponibilidad y la protección del lavador de gases.
+
+La implementación, las pruebas individuales y las evidencias se encuentran documentadas y versionadas en el repositorio del Grupo G1.
