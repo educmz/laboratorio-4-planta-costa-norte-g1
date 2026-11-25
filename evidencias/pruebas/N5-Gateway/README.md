@@ -17,6 +17,8 @@ Entorno: gateway corregido en Wokwi (izquierda) y [simulador de nodos](../../../
 | [08](08-F18-nodos-caidos-sin-vigencia.png) | F18 | Secadores y perímetro dejan de publicar: `Nodos con datos vigentes: 1 (pozas si, secadores NO, perimetro NO)` |
 | [09](09-F19-firma-invalida-rechazada.png) | F19, R9 | Mensajes firmados con otra clave: `RECHAZADO (firma invalida)` |
 | [10](10-F19-desfase-reloj-wokwi.png) | F19 | Hallazgo durante la prueba: el reloj simulado se atrasa y los datos válidos se rechazaban como `marca de tiempo en el futuro`. Corregido resincronizando NTP cada 15 s (`04b0d77`) |
+| [11](11-F19-mensaje-antiguo-y-alerta-falsa-rechazados.png) | F19, R9 | Dato firmado de hace 120 s: `RECHAZADO (mensaje antiguo)`; alerta falsa con el lavador apagado: `ALERTA IGNORADA` |
+| [12](12-F18-solo-pozas-vigente.png) | F18 | Con secadores y perímetro caídos, solo pozas cuenta: `Nodos con datos vigentes: 1` y la concentración publicada (`conc:400.0`) ya no usa los valores viejos |
 
 ## Medición del lazo cerrado
 
@@ -27,6 +29,4 @@ Entorno: gateway corregido en Wokwi (izquierda) y [simulador de nodos](../../../
 
 ## Pendiente
 
-- Capturas de los ataques: dato de hace 120 s (`RECHAZADO (mensaje antiguo)`), replay (`RECHAZADO (mensaje repetido)`) y alerta falsa con lavador apagado (`ALERTA IGNORADA`).
-- F18 completo: con dos nodos caídos y pozas en 400 ppm, `Orden: lavador OFF`.
-- Prueba de integración con los nodos reales N1 a N4.
+- Prueba de integración con los nodos reales N1 a N4 (requiere que N1 publique `valor` numérico, N3 corrija la escala del viento y N4 use el prefijo `upc/ga/`).
