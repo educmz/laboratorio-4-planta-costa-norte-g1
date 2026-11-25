@@ -7,8 +7,7 @@
 #include <time.h>
 #include "mbedtls/md.h"
 
-const char* CLAVE  = "REEMPLAZAR_CLAVE_GRUPO";
-const char* TS_KEY = "TU_WRITE_KEY";     // clave de escritura de ThingSpeak
+#include "secrets.h"                     // CLAVE (HMAC del grupo) y TS_KEY (ThingSpeak), fuera del repositorio
 
 const int PIN_PIXEL = 5, PIN_ACK = 13;
 const float UMBRAL_GAS = 2000;           // ppm
@@ -20,6 +19,12 @@ PubSubClient mqtt(net);
 float gasPozas = 0, gasSecadores = 0, gasPerimetro = 0;
 int viento = 0;
 bool lavadorOn = false, alerta = false;
+
+// Seguridad de datos (R9): hora real y proteccion contra repeticion
+const long TS_MINIMO = 1700000000;   // por debajo, el reloj no esta sincronizado con NTP
+const long MAX_ANTIGUEDAD = 60;      // s
+const long MAX_ADELANTO = 5;         // s de tolerancia por diferencias de reloj
+long ultimoTsPozas = 0, ultimoTsSecadores = 0, ultimoTsPerimetro = 0;
 
 String firmar(const String& m) {
   byte out[32];
@@ -54,6 +59,12 @@ void alRecibir(char* t, byte* p, unsigned int n) {
   String topico(t);
 
   if (topico.endsWith("/alerta")) {
+    // La alerta del lavador no viene firmada: solo se acepta si coincide con
+    // el estado del propio gateway (lavador encendido y esperando confirmacion).
+    if (!lavadorOn || msg.indexOf("falla del lavador") < 0) {
+      Serial.println("ALERTA IGNORADA (no coincide con el estado del gateway): " + msg);
+      return;
+    }
     alerta = true;
     Serial.println("ALERTA: " + msg);
     mqtt.publish("upc/ga/pozas/cmd", "VENT:MAX");   // respuesta de respaldo
@@ -74,10 +85,37 @@ void alRecibir(char* t, byte* p, unsigned int n) {
     return;
   }
   long ahora = time(nullptr);
-  if (ahora - ts > 60) {
+  if (ahora < TS_MINIMO) {
+    Serial.println("RECHAZADO (gateway sin hora NTP): " + id);
+    return;
+  }
+  if (ahora - ts > MAX_ANTIGUEDAD) {
     Serial.println("RECHAZADO (mensaje antiguo): " + id);
     return;
   }
+  if (ts - ahora > MAX_ADELANTO) {
+    Serial.println("RECHAZADO (marca de tiempo en el futuro): " + id);
+    return;
+  }
+  // El topico debe corresponder al id firmado
+  if (!topico.endsWith("/" + id + "/datos")) {
+    Serial.println("RECHAZADO (id no corresponde al topico): " + id);
+    return;
+  }
+  // Anti-replay: cada nodo publica con marcas de tiempo crecientes
+  long* ultimoTs = nullptr;
+  if (id == "pozas") ultimoTs = &ultimoTsPozas;
+  else if (id == "secadores") ultimoTs = &ultimoTsSecadores;
+  else if (id == "perimetro") ultimoTs = &ultimoTsPerimetro;
+  if (ultimoTs == nullptr) {
+    Serial.println("RECHAZADO (nodo desconocido): " + id);
+    return;
+  }
+  if (ts <= *ultimoTs) {
+    Serial.println("RECHAZADO (mensaje repetido): " + id);
+    return;
+  }
+  *ultimoTs = ts;
 
   float v = valor.toFloat();
   if (id == "pozas") gasPozas = v;
@@ -118,6 +156,10 @@ void setup() {
   pinMode(PIN_ACK, INPUT_PULLUP);
   WiFi.begin("Wokwi-GUEST", "");
   while (WiFi.status() != WL_CONNECTED) delay(200);
+  // Hora real para validar la antiguedad de los mensajes (R9)
+  configTime(0, 0, "pool.ntp.org", "time.google.com");
+  for (int i = 0; i < 50 && time(nullptr) < TS_MINIMO; i++) delay(200);
+  Serial.println(time(nullptr) >= TS_MINIMO ? "NTP sincronizado" : "NTP sin sincronizar: se rechazaran los datos");
   mqtt.setServer("broker.hivemq.com", 1883);
   mqtt.setBufferSize(512);
   mqtt.setKeepAlive(60);
