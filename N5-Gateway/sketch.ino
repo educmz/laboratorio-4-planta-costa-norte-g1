@@ -23,7 +23,7 @@ bool lavadorOn = false, alerta = false;
 // Seguridad de datos (R9): hora real y proteccion contra repeticion
 const long TS_MINIMO = 1700000000;   // por debajo, el reloj no esta sincronizado con NTP
 const long MAX_ANTIGUEDAD = 60;      // s
-const long MAX_ADELANTO = 5;         // s de tolerancia por diferencias de reloj
+const long MAX_ADELANTO = 15;        // s de tolerancia: en Wokwi el reloj simulado se atrasa respecto al real
 long ultimoTsPozas = 0, ultimoTsSecadores = 0, ultimoTsPerimetro = 0;
 
 String firmar(const String& m) {
@@ -172,6 +172,15 @@ unsigned long tDecision = 0, tNube = 0;
 void loop() {
   if (!mqtt.connected()) conectar();
   mqtt.loop();
+
+  // Resincroniza NTP cada 15 s: en Wokwi la simulacion corre mas lenta que el
+  // tiempo real y el reloj se va atrasando; sin esto, a los pocos minutos los
+  // datos de los nodos parecen venir "del futuro" y se rechazan.
+  static unsigned long tNtp = 0;
+  if (millis() - tNtp >= 15000) {
+    tNtp = millis();
+    configTime(0, 0, "pool.ntp.org", "time.google.com");
+  }
 
   if (digitalRead(PIN_ACK) == LOW && alerta) {
     alerta = false;
