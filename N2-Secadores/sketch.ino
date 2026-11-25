@@ -9,7 +9,7 @@ const char* T_DATOS = "upc/ga/secadores/datos";
 
 const int PIN_GAS = 34, PIN_DHT = 15, PIN_R = 25, PIN_G = 26, PIN_B = 27;
 const float UMBRAL_AMARILLO = 1500, UMBRAL_ROJO = 2000;   // ppm
-const unsigned long PERIODO = 100;                         // ms entre publicaciones
+const unsigned long PERIODO = 2000;                         // ms entre publicaciones
 
 WiFiClient net;
 PubSubClient mqtt(net);
