@@ -17,6 +17,11 @@ WiFiClient net;
 PubSubClient mqtt(net);
 
 float gasPozas = 0, gasSecadores = 0, gasPerimetro = 0;
+// Momento (millis) del ultimo dato valido de cada nodo; 0 = nunca recibido
+unsigned long tPozas = 0, tSecadores = 0, tPerimetro = 0;
+const unsigned long VIGENCIA_DATO = 10000;   // ms: 5 publicaciones perdidas (cada 2 s)
+
+bool vigente(unsigned long t) { return t != 0 && millis() - t <= VIGENCIA_DATO; }
 int viento = 0;
 bool lavadorOn = false, alerta = false;
 
@@ -118,9 +123,9 @@ void alRecibir(char* t, byte* p, unsigned int n) {
   *ultimoTs = ts;
 
   float v = valor.toFloat();
-  if (id == "pozas") gasPozas = v;
-  else if (id == "secadores") gasSecadores = v;
-  else if (id == "perimetro") { gasPerimetro = v; viento = campo(msg, "viento").toInt(); }
+  if (id == "pozas") { gasPozas = v; tPozas = millis(); }
+  else if (id == "secadores") { gasSecadores = v; tSecadores = millis(); }
+  else if (id == "perimetro") { gasPerimetro = v; viento = campo(msg, "viento").toInt(); tPerimetro = millis(); }
   Serial.println("OK " + id + ": " + String(v, 1) + " ppm");
 }
 
@@ -189,17 +194,29 @@ void loop() {
 
   if (millis() - tDecision >= 2000) {
     tDecision = millis();
-    bool haciaComunidad = (viento >= 90 && viento <= 180);
-    int confirmaciones = (gasPozas > UMBRAL_GAS) + (gasSecadores > UMBRAL_GAS) + (gasPerimetro > UMBRAL_GAS);
-    float conc = max(gasPozas, max(gasSecadores, gasPerimetro));
-    mqtt.publish("upc/ga/gateway/conc", String(conc, 1).c_str());
+    // Solo cuentan los datos vigentes: un nodo desconectado no puede dejar
+    // congelado su ultimo valor en la decision (falla silenciosa).
+    bool okPozas = vigente(tPozas), okSecadores = vigente(tSecadores), okPerimetro = vigente(tPerimetro);
+    int vigentes = okPozas + okSecadores + okPerimetro;
+    static int vigentesAntes = -1;
+    if (vigentes != vigentesAntes) {
+      vigentesAntes = vigentes;
+      Serial.println(String("Nodos con datos vigentes: ") + vigentes +
+                     " (pozas " + (okPozas ? "si" : "NO") + ", secadores " + (okSecadores ? "si" : "NO") +
+                     ", perimetro " + (okPerimetro ? "si" : "NO") + ")");
+    }
+    bool haciaComunidad = okPerimetro && (viento >= 90 && viento <= 180);
+    int confirmaciones = (okPozas && gasPozas > UMBRAL_GAS) + (okSecadores && gasSecadores > UMBRAL_GAS) +
+                         (okPerimetro && gasPerimetro > UMBRAL_GAS);
+    float conc = max(okPozas ? gasPozas : 0, max(okSecadores ? gasSecadores : 0, okPerimetro ? gasPerimetro : 0));
+    if (vigentes > 0) mqtt.publish("upc/ga/gateway/conc", String(conc, 1).c_str());
 
     // Regla combinada (fog)
     if (!lavadorOn && confirmaciones >= 2 && haciaComunidad) {
       mqtt.publish("upc/ga/lavador/cmd", "ON", true);
       lavadorOn = true;
       Serial.println("Orden: lavador ON");
-    } else if (lavadorOn && conc < UMBRAL_GAS * 0.8) {
+    } else if (lavadorOn && vigentes > 0 && conc < UMBRAL_GAS * 0.8) {   // sin datos vigentes no se apaga (R7)
       mqtt.publish("upc/ga/lavador/cmd", "OFF", true);
       lavadorOn = false;
       Serial.println("Orden: lavador OFF");
