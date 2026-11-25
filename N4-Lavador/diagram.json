@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "author": "Proveedor anterior",
+  "author": "Grupo G1 - Integrante 4",
   "editor": "wokwi",
   "parts": [
     {
@@ -38,6 +38,24 @@
       "left": 480,
       "attrs": {
         "size": "17"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledRele",
+      "top": -210,
+      "left": 380,
+      "attrs": {
+        "color": "green"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rRele",
+      "top": -145,
+      "left": 380,
+      "attrs": {
+        "value": "220"
       }
     }
   ],
@@ -142,6 +160,30 @@
       "drv:2B",
       "motor:A-",
       "green",
+      []
+    ],
+    [
+      "esp:3V3",
+      "rele:COM",
+      "red",
+      []
+    ],
+    [
+      "rele:NO",
+      "rRele:1",
+      "green",
+      []
+    ],
+    [
+      "rRele:2",
+      "ledRele:A",
+      "green",
+      []
+    ],
+    [
+      "ledRele:C",
+      "esp:GND.2",
+      "black",
       []
     ]
   ],
