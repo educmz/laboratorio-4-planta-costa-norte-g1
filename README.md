@@ -50,10 +50,10 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 | F2 — N1-Pozas | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
 | F3 — N1-Pozas | Seguridad | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
 | F4 — N1-Pozas | Cruzada | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
-| F5 — N2-Secadores | Visible | — | — | — | — | Sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
-| F6 — N2-Secadores | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
-| F7 — N2-Secadores | Seguridad | — | — | — | — | Sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
-| F8 — N2-Secadores | Cruzada | — | — | — | — | Sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
+| F5 — N2-Secadores | Visible | Por confirmar | Mensajes seriales repetidos dentro del mismo segundo | PERIODO = 100 ms; R8 exige 2000 ms | Propuesta: PERIODO = 2000; commit pendiente | Antes observado; después sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
+| F6 — N2-Secadores | Silenciosa | Por confirmar | Concentración reportada potencialmente distinta de la configurada | Conversión lineal ADC a ppm; diagnóstico confirmado por docente según integrante | Determinar fórmula del simulador; commit pendiente | Comparar valores configurados y reportados antes/después; sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
+| F7 — N2-Secadores | Seguridad | Por confirmar | JSON con firma vacía | No se genera HMAC; R9 | Implementar HMAC compatible con N5; commit pendiente | Verificar firma válida y rechazo de alteración; sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
+| F8 — N2-Secadores | Cruzada | Por confirmar | N5 no recibe datos de N2 | N5 suscrito a dato en vez de datos; contrato MQTT | Coordinar corrección en N5 y referenciar su PR; pendiente | Verificar recepción en N5 antes/después; sin ejecutar | Integrante 2 y 5 | Integrante 1 (bitácora N2) |
 | F9 — N3-Perimetro | Visible | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F10 — N3-Perimetro | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F11 — N3-Perimetro | Seguridad | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
@@ -66,6 +66,10 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 | F18 — N5-Gateway | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 5 (integrador) | Integrante 4 |
 | F19 — N5-Gateway | Seguridad | — | — | — | — | Sin ejecutar | Integrante 5 (integrador) | Integrante 4 |
 | F20 — N5-Gateway | Cruzada | — | — | — | — | Sin ejecutar | Integrante 5 (integrador) | Integrante 4 |
+
+### Hallazgo adicional N2
+
+EXTRA-N2-01: N2 y N3 usan `ga-sensor`; colisión confirmada en código, prueba simultánea pendiente. Propuesta: Client ID único por nodo y grupo. No sustituye F8.
 
 ## Flujo de trabajo
 1. Guardar copia de Wokwi; subir código original a main antes de corregir, sin secretos.
