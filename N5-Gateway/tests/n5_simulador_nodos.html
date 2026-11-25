@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>N5 · Simulador de nodos y ataques</title>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+  body { font: 15px system-ui, sans-serif; color: #18263a; background: #f4f6f9; margin: 0 }
+  main { max-width: 980px; margin: 20px auto; padding: 0 16px }
+  h1 { font-size: 22px; margin: 8px 0 }
+  section { background: #fff; border: 1px solid #dbe2ea; border-radius: 10px; padding: 14px; margin: 12px 0 }
+  h2 { font-size: 16px; margin: 0 0 10px }
+  .fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 }
+  input { padding: 7px; border: 1px solid #aab8c8; border-radius: 6px; font: inherit }
+  input[type=number] { width: 100px }
+  button { padding: 7px 12px; border: 1px solid #bdc8d5; border-radius: 6px; background: #fff; cursor: pointer; font: inherit }
+  button.primario { background: #245683; color: #fff; border: 0 }
+  button.ataque { border-color: #c0392b; color: #c0392b }
+  .nodos { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px }
+  #log { font: 12px ui-monospace, monospace; height: 320px; overflow: auto; background: #0f1720; color: #d6e2ee; padding: 10px; border-radius: 8px; white-space: pre-wrap }
+  .estado { font-weight: 600 }
+  small { color: #55657a }
+</style>
+</head>
+<body>
+<main>
+  <h1>N5 Gateway · simulador de nodos y ataques</h1>
+  <small>Publica en HiveMQ (WebSocket 8884) los mismos mensajes que N1, N2, N3 y N4 para probar el gateway sin depender de los demás nodos. La clave no se guarda en ningún sitio.</small>
+
+  <section>
+    <h2>Conexión</h2>
+    <div class="fila">
+      Prefijo <input id="prefijo" value="ga" size="4">
+      Clave HMAC <input id="clave" type="password" placeholder="clave del grupo" size="22">
+      <button class="primario" id="btnConectar">Conectar</button>
+      <span class="estado" id="estado">Desconectado</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Nodos sensores (formato del contrato, firmados)</h2>
+    <div class="nodos">
+      <div>
+        <b>N1 pozas</b>
+        <div class="fila">Gas <input type="number" id="gas-pozas" value="400"> ppm</div>
+        <div class="fila"><label><input type="checkbox" id="auto-pozas"> publicar cada 2 s</label></div>
+      </div>
+      <div>
+        <b>N2 secadores</b>
+        <div class="fila">Gas <input type="number" id="gas-secadores" value="400"> ppm</div>
+        <div class="fila"><label><input type="checkbox" id="auto-secadores"> publicar cada 2 s</label></div>
+      </div>
+      <div>
+        <b>N3 perímetro</b>
+        <div class="fila">Gas <input type="number" id="gas-perimetro" value="400"> ppm</div>
+        <div class="fila">Viento <input type="number" id="viento" value="135" min="0" max="359"> grados</div>
+        <div class="fila"><label><input type="checkbox" id="auto-perimetro"> publicar cada 2 s</label></div>
+      </div>
+    </div>
+    <div class="fila">
+      <button id="btnPico">Escenario: pico con viento a la comunidad (2500 ppm, 135°)</button>
+      <button id="btnNormal">Escenario: vuelta a normal (400 ppm)</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>N4 lavador simulado</h2>
+    <div class="fila">
+      <label><input type="checkbox" id="autoConfirmar" checked> confirmar automáticamente al recibir cmd:ON</label>
+      tras <input type="number" id="retardo" value="3"> s
+      <button id="btnConfirmar">Publicar CONFIRMADO ahora</button>
+    </div>
+    <small>Desmarca la confirmación automática para probar el lazo cerrado: a los 10 s el gateway debe alertar y mandar cmd:VENT:MAX a pozas.</small>
+  </section>
+
+  <section>
+    <h2>Ataques desde el broker (el gateway debe rechazarlos)</h2>
+    <div class="fila">
+      <button class="ataque" id="atkSinFirma">Dato sin firma</button>
+      <button class="ataque" id="atkFirmaMala">Firma incorrecta</button>
+      <button class="ataque" id="atkAntiguo">Dato firmado de hace 120 s</button>
+      <button class="ataque" id="atkReplay">Repetir el último dato capturado (replay)</button>
+      <button class="ataque" id="atkAlerta">Alerta falsa del lavador</button>
+      <button class="ataque" id="atkOrden">Orden ON sin firma al lavador</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tráfico upc/&lt;prefijo&gt;/#</h2>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script>
+let cliente = null;
+let ultimoCapturado = null;   // último dato de sensor visto en el broker, para el replay
+const timers = {};
+const $ = id => document.getElementById(id);
+const p = () => $("prefijo").value.trim();
+const ahora = () => Math.floor(Date.now() / 1000);
+
+function log(texto) {
+  const l = $("log");
+  l.textContent += new Date().toLocaleTimeString() + "  " + texto + "\n";
+  l.scrollTop = l.scrollHeight;
+}
+
+async function hmac16(mensaje) {
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey("raw", enc.encode($("clave").value),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const firma = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(mensaje)));
+  return Array.from(firma.slice(0, 8)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function publicar(topico, msg) {
+  if (!cliente || !cliente.connected) { log("! No conectado"); return; }
+  cliente.publish(topico, msg);
+}
+
+async function datoNodo(id, ts = ahora(), firmaFalsa = false) {
+  const valor = Number($("gas-" + id).value).toFixed(1);
+  let firma = firmaFalsa ? "0123456789abcdef" : await hmac16(`${id}|${ts}|${valor}`);
+  let json = `{"id":"${id}","ts":${ts},"valor":${valor},"unidad":"ppm"`;
+  if (id === "perimetro") json += `,"viento":${parseInt($("viento").value, 10)}`;
+  json += `,"calidad":"ok","firma":"${firma}"}`;
+  return json;
+}
+
+async function publicarNodo(id) {
+  publicar(`upc/${p()}/${id}/datos`, await datoNodo(id));
+}
+
+async function ordenN4(contenido) {
+  const base = `gateway|${ahora()}|${contenido}`;
+  return `${base}|${await hmac16(base)}`;
+}
+
+$("btnConectar").onclick = () => {
+  if (!$("clave").value) { alert("Escribe la clave HMAC del grupo"); return; }
+  if (cliente) cliente.end(true);
+  cliente = mqtt.connect("wss://broker.hivemq.com:8884/mqtt",
+    { clientId: `${p()}-n5-simulador-${Math.random().toString(16).slice(2, 8)}` });
+  cliente.on("connect", () => {
+    $("estado").textContent = "Conectado";
+    cliente.subscribe(`upc/${p()}/#`);
+    log("Conectado. Suscrito a upc/" + p() + "/#");
+  });
+  cliente.on("close", () => $("estado").textContent = "Desconectado");
+  cliente.on("message", (topico, payload) => {
+    const msg = payload.toString();
+    log(topico + "  " + msg);
+    if (topico.endsWith("/datos")) ultimoCapturado = { topico, msg };
+    if (topico === `upc/${p()}/lavador/cmd` && msg.includes("|cmd:ON|") && $("autoConfirmar").checked) {
+      const s = Number($("retardo").value) || 0;
+      setTimeout(() => publicar(`upc/${p()}/lavador/estado`, '{"lavador":"CONFIRMADO"}'), s * 1000);
+    }
+  });
+};
+
+for (const id of ["pozas", "secadores", "perimetro"]) {
+  $("auto-" + id).onchange = e => {
+    clearInterval(timers[id]);
+    if (e.target.checked) { publicarNodo(id); timers[id] = setInterval(() => publicarNodo(id), 2000); }
+  };
+}
+
+function escenario(gas, viento) {
+  for (const id of ["pozas", "secadores", "perimetro"]) {
+    $("gas-" + id).value = gas;
+    if (!$("auto-" + id).checked) { $("auto-" + id).checked = true; $("auto-" + id).onchange({ target: $("auto-" + id) }); }
+  }
+  $("viento").value = viento;
+  log(`>> Escenario: gas ${gas} ppm, viento ${viento}°`);
+}
+$("btnPico").onclick = () => escenario(2500, 135);
+$("btnNormal").onclick = () => escenario(400, $("viento").value);
+$("btnConfirmar").onclick = () => publicar(`upc/${p()}/lavador/estado`, '{"lavador":"CONFIRMADO"}');
+
+$("atkSinFirma").onclick = () => {
+  log(">> ATAQUE: dato sin firma");
+  publicar(`upc/${p()}/secadores/datos`, `{"id":"secadores","ts":${ahora()},"valor":9999.0,"unidad":"ppm","calidad":"ok","firma":""}`);
+};
+$("atkFirmaMala").onclick = async () => {
+  log(">> ATAQUE: firma incorrecta");
+  publicar(`upc/${p()}/secadores/datos`, await datoNodo("secadores", ahora(), true));
+};
+$("atkAntiguo").onclick = async () => {
+  log(">> ATAQUE: dato firmado con 120 s de antigüedad");
+  publicar(`upc/${p()}/pozas/datos`, await datoNodo("pozas", ahora() - 120));
+};
+$("atkReplay").onclick = () => {
+  if (!ultimoCapturado) { log("! Aún no hay datos capturados"); return; }
+  log(">> ATAQUE: replay de " + ultimoCapturado.topico);
+  publicar(ultimoCapturado.topico, ultimoCapturado.msg);
+};
+$("atkAlerta").onclick = () => {
+  log(">> ATAQUE: alerta falsa del lavador");
+  publicar(`upc/${p()}/lavador/alerta`, '{"alerta":"falla del lavador"}');
+};
+$("atkOrden").onclick = () => {
+  log(">> ATAQUE: orden ON sin firma");
+  publicar(`upc/${p()}/lavador/cmd`, "ON");
+};
+</script>
+</body>
+</html>
