@@ -91,7 +91,7 @@ void conectar() {
   while (!mqtt.connected()) {
     String id = "ga-gateway-" + WiFi.macAddress();
     if (mqtt.connect(id.c_str())) {
-      mqtt.subscribe("upc/ga/+/dato");
+      mqtt.subscribe("upc/ga/+/datos");   // contrato: upc/<p>/<nodo>/datos
       mqtt.subscribe("upc/ga/lavador/estado");
       mqtt.subscribe("upc/ga/lavador/alerta");
       Serial.println("Gateway conectado");
