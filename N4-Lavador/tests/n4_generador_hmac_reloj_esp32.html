@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>N4 · Generador HMAC</title>
+<style>
+    body {
+        font: 16px system-ui, sans-serif;
+        color: #18263a;
+        background: #f4f6f9;
+        margin: 0
+    }
+
+    main {
+        max-width: 720px;
+        margin: 30px auto;
+        padding: 24px;
+        background: white;
+        border: 1px solid #dbe2ea;
+        border-radius: 14px
+    }
+
+    h1 {
+        font-size: 25px
+    }
+
+    label {
+        display: block;
+        font-weight: 600;
+        margin: 16px 0 6px
+    }
+
+    input,
+    select,
+    textarea {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #aab8c8;
+        border-radius: 6px;
+        font: inherit
+    }
+
+    textarea {
+        font: 14px monospace;
+        resize: vertical
+    }
+
+    button {
+        padding: 11px 15px;
+        margin: 8px 6px 0 0;
+        border: 1px solid #bdc8d5;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font: inherit
+    }
+
+    button.primary {
+        background: #245683;
+        color: white;
+        border: 0
+    }
+
+    small,
+    p {
+        line-height: 1.5
+    }
+
+    #status {
+        min-height: 24px;
+        color: #245683
+    }
+
+    @media(max-width:760px) {
+        main {
+            margin: 10px;
+            padding: 16px
+        }
+    }
+</style>
+<main>
+    <h1>N4-Lavador · Generador HMAC</h1>
+    <p>Pruebas locales del laboratorio G1. No envía mensajes ni guarda la clave. Copia el topic y el mensaje a HiveMQ.
+        Utiliza exclusivamente tu prefijo aislado.</p><label for="key">Clave HMAC de simulación</label><input id="key"
+        type="password" autocomplete="off" placeholder="La misma clave que configuraste en Wokwi"><label
+        for="test">Prueba</label><select id="test">
+        <option value="cmd:ON">ON autenticado</option>
+        <option value="conc:2500.0">Concentración alta: 2500 ppm</option>
+        <option value="cmd:OFF">OFF autenticado</option>
+        <option value="conc:1500.0">Concentración baja: 1500 ppm</option>
+        <option value="bad">ON con firma incorrecta</option>
+        <option value="old">ON con timestamp antiguo (120 s)</option>
+        <option value="replay">Repetir último comando válido generado</option>
+    </select><label for="clock">Timestamp actual del ESP32 (copiar del monitor serial)</label><input id="clock" type="number" min="1700000000" placeholder="Ejemplo: 1795632507"><small>Introduce una lectura reciente del reloj del ESP32 antes de cada prueba. El generador resta 2 segundos como margen.</small><button class="primary" id="generate">Generar mensaje ahora</button><label for="topic">Topic de
+        publicación</label><textarea id="topic" rows="2" readonly></textarea><button id="copyTopic">Copiar
+        topic</button><label for="payload">Mensaje</label><textarea id="payload" rows="3" readonly></textarea><button
+        id="copyPayload">Copiar mensaje</button>
+    <p id="status" role="status"></p><small>Publica inmediatamente (vigencia máxima 60 s). Espera al menos 2 segundos
+        entre comandos nuevos. En HiveMQ usa QoS 0 y Retain desactivado. Para replay, publica primero el comando válido
+        y después repite exactamente ese mensaje, dentro de 60 s. El reloj del ESP32 debe estar sincronizado por
+        NTP.</small>
+</main>
+<script>
+    const $ = id => document.getElementById(id), prefix = 'upc/ga-n4-test-481668300518825985'; let last = null; const enc = new TextEncoder();
+    async function sign(key, base) { const k = await crypto.subtle.importKey('raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); const b = new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(base))); return Array.from(b.slice(0, 8), x => x.toString(16).padStart(2, '0')).join(''); }
+    $('generate').onclick = async () => { try { let test = $('test').value, key = $('key').value; if (test === 'replay') { if (!last) throw Error('Genera y publica primero un comando válido.'); $('topic').value = last.topic; $('payload').value = last.payload; $('status').textContent = 'Mensaje anterior recuperado; verifica que ya lo publicaste.'; return; } if (!key) throw Error('Introduce la clave de simulación.'); if (!globalThis.crypto?.subtle) throw Error('WebCrypto no disponible. Abre el archivo en Chrome, Edge o Brave actualizado.'); let now = Number($('clock').value) - 2; if (!Number.isInteger(now) || now < 1700000000) throw Error('Introduce un timestamp reciente del ESP32.'); let old = test === 'old', bad = test === 'bad', value = (old || bad) ? 'cmd:ON' : test; let base = `gateway|${now - (old ? 120 : 0)}|${value}`, sig = await sign(key, base); if (bad) sig = (sig[0] === '0' ? '1' : '0') + sig.slice(1); let topic = prefix + (value.startsWith('conc:') ? '/gateway/conc' : '/lavador/cmd'); let payload = base + '|' + sig; $('topic').value = topic; $('payload').value = payload; if (!bad && !old && value.startsWith('cmd:')) last = { topic, payload }; $('status').textContent = 'Generado. ' + (old ? 'Timestamp antiguo intencional.' : 'Publica ahora.') } catch (e) { $('status').textContent = e.message; } };
+    async function copy(id) { try { await navigator.clipboard.writeText($(id).value); $('status').textContent = 'Copiado.' } catch { $(id).select(); $('status').textContent = 'Seleccionado: presiona Ctrl+C.' } } $('copyTopic').onclick = () => copy('topic'); $('copyPayload').onclick = () => copy('payload');
+</script>
+
+</html>
