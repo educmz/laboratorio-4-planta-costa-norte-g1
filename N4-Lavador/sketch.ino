@@ -60,12 +60,20 @@ void alRecibir(char* topic, byte* payload, unsigned int len) {
 
   if (t == T_CONC) {
     concentracion = msg.toFloat();
+    ultimoContacto = millis();
+    modoSeguro = false;
   } else if (t == T_CMD) {
     if (msg == "ON") {
+      ultimoContacto = millis();
+      modoSeguro = false;
       encender("orden gateway");
     } else if (msg == "OFF") {
+      ultimoContacto = millis();
+      modoSeguro = false;
       apagar("orden gateway");
     } else if (msg.startsWith("INT:")) {
+      ultimoContacto = millis();
+      modoSeguro = false;
       intensidad = constrain(msg.substring(4).toInt(), 1, 5);
       publicar(T_ESTADO, "{\"intensidad\":" + String(intensidad) + "}");
     }
@@ -73,16 +81,15 @@ void alRecibir(char* topic, byte* payload, unsigned int len) {
 }
 
 void conectar() {
-  while (WiFi.status() != WL_CONNECTED) { delay(200); }
-  while (!mqtt.connected()) {
-    String id = "ga-lavador-" + String(random(0xffff), HEX);
-    if (mqtt.connect(id.c_str())) {
-      mqtt.subscribe(T_CMD);
-      mqtt.subscribe(T_CONC);
-      publicar(T_ESTADO, "{\"nodo\":\"lavador\",\"estado\":\"online\"}");
-    } else {
-      delay(1000);
-    }
+  static unsigned long ultimoIntento = 0;
+  if (WiFi.status() != WL_CONNECTED || mqtt.connected()) return;
+  if (millis() - ultimoIntento < 5000) return;
+  ultimoIntento = millis();
+  String id = "ga-lavador-" + WiFi.macAddress();
+  if (mqtt.connect(id.c_str())) {
+    mqtt.subscribe(T_CMD);
+    mqtt.subscribe(T_CONC);
+    publicar(T_ESTADO, "{\"nodo\":\"lavador\",\"estado\":\"online\"}");
   }
 }
 
@@ -107,14 +114,11 @@ void setup() {
   mqtt.setServer(BROKER, 1883);
   mqtt.setCallback(alRecibir);
   mqtt.setKeepAlive(60);
-  conectar();
+  mqtt.setSocketTimeout(3);
   ultimoContacto = millis();
 }
 
 void loop() {
-  if (!mqtt.connected()) conectar();
-  mqtt.loop();
-  if (mqtt.connected()) ultimoContacto = millis();
 
   // Lazo cerrado: confirmacion de funcionamiento
   if (esperandoConf) {
@@ -128,10 +132,14 @@ void loop() {
   }
 
   // Modo seguro: sin contacto con el gateway
-  if (!modoSeguro && millis() - ultimoContacto > T_MODO_SEGURO) {
+  if (!modoSeguro && millis() - ultimoContacto >= T_MODO_SEGURO) {
     modoSeguro = true;
+    intensidad = 5;
     encender("modo seguro");
+    publicar(T_ALERTA, "{\"alerta\":\"sin contacto con gateway\"}");
   }
 
+  if (!mqtt.connected()) conectar();
+  if (mqtt.connected()) mqtt.loop();
   girarMotor();
 }
