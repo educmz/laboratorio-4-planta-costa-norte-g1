@@ -4,6 +4,8 @@
 #include <PubSubClient.h>
 #include "DHTesp.h"
 #include <time.h>
+#include "mbedtls/md.h"
+#include "secrets.h"
 
 const char* T_DATOS = "upc/ga/secadores/datos";
 
@@ -14,6 +16,17 @@ const unsigned long PERIODO = 100;                         // ms entre publicaci
 WiFiClient net;
 PubSubClient mqtt(net);
 DHTesp dht;
+
+// F7: HMAC-SHA256 truncado a 16 caracteres hexadecimales.
+String firmar(const String& mensaje) {
+  unsigned char out[32];
+  if (mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
+      (const unsigned char*)CLAVE, strlen(CLAVE),
+      (const unsigned char*)mensaje.c_str(), mensaje.length(), out) != 0) return "";
+  char firma[17];
+  for (int i = 0; i < 8; i++) snprintf(firma + 2 * i, 3, "%02x", out[i]);
+  return String(firma);
+}
 
 void baliza(int r, int g, int b) {
   digitalWrite(PIN_R, r);
@@ -44,6 +57,7 @@ void setup() {
   for (int i = 0; i < 50 && time(nullptr) < 1700000000; i++) delay(200);
   mqtt.setServer("broker.hivemq.com", 1883);
   mqtt.setKeepAlive(60);
+  mqtt.setBufferSize(512);
   conectar();
 }
 
@@ -64,14 +78,22 @@ void loop() {
   else baliza(0, 1, 0);
 
   long ts = time(nullptr);
+  if (ts < 1700000000) return;
+  String valor = String(gas, 1);
+  String firma = firmar("secadores|" + String(ts) + "|" + valor);
+  if (firma.length() != 16) return;
   String msg = "{\"id\":\"secadores\",\"ts\":" + String(ts) +
-               ",\"valor\":" + String(gas, 1) +
+               ",\"valor\":" + valor +
                ",\"unidad\":\"ppm\",\"temp\":" + String(d.temperature, 1) +
                ",\"hum\":" + String(d.humidity, 1) +
                ",\"equipo\":\"Secador rotatorio SR-01\"" +
                ",\"zona\":\"Linea de secado de harina - Planta Chimbote\"" +
                ",\"responsable\":\"Jefe de turno de produccion\"" +
-               ",\"calidad\":\"ok\",\"firma\":\"\"}";
-  mqtt.publish(T_DATOS, msg.c_str());
-  Serial.println(msg);
+               ",\"calidad\":\"ok\",\"firma\":\"" + firma + "\"}";
+  if (mqtt.publish(T_DATOS, msg.c_str())) {
+    Serial.println(msg);
+    Serial.println("Publicacion MQTT exitosa");
+  } else {
+    Serial.println("Error al publicar por MQTT");
+  }
 }
