@@ -2,7 +2,7 @@
 
 Curso: 1ASI0572 Desarrollo de Soluciones IoT · Laboratorio 4.
 
-- Responsable: integrante 4 (nombre pendiente de registrar).
+- Responsable: Fabricio Fabian Quispe Barzola.
 - Revisor: integrante 3 (nombre y aprobación pendientes).
 - [Wokwi heredado](https://wokwi.com/projects/481590024229204993) · [Copia de trabajo corregida](https://wokwi.com/projects/481668300518825985).
 - Prefijo oficial: `upc/ga/`; pruebas aisladas: `upc/ga-n4-test-481668300518825985/`.
