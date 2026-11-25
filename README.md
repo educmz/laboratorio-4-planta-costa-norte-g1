@@ -50,10 +50,10 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 | F2 — N1-Pozas | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
 | F3 — N1-Pozas | Seguridad | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
 | F4 — N1-Pozas | Cruzada | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
-| F5 — N2-Secadores | Visible | Por confirmar | Mensajes seriales repetidos dentro del mismo segundo | PERIODO = 100 ms; R8 exige 2000 ms | Propuesta: PERIODO = 2000; commit pendiente | Antes observado; después sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
-| F6 — N2-Secadores | Silenciosa | Por confirmar | Concentración reportada potencialmente distinta de la configurada | Conversión lineal ADC a ppm; diagnóstico confirmado por docente según integrante | Determinar fórmula del simulador; commit pendiente | Comparar valores configurados y reportados antes/después; sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
-| F7 — N2-Secadores | Seguridad | Por confirmar | JSON con firma vacía | No se genera HMAC; R9 | Implementar HMAC compatible con N5; commit pendiente | Verificar firma válida y rechazo de alteración; sin ejecutar | Integrante 2 (@educmz) | Integrante 1 |
-| F8 — N2-Secadores | Cruzada | Por confirmar | N5 no recibe datos de N2 | N5 suscrito a dato en vez de datos; contrato MQTT | Coordinar corrección en N5 y referenciar su PR; pendiente | Verificar recepción en N5 antes/después; sin ejecutar | Integrante 2 y 5 | Integrante 1 (bitácora N2) |
+| F5 — N2-Secadores | Visible | R8: periodicidad de datos | Mensajes repetidos en el mismo segundo | PERIODO = 100 ms | 2000 ms; [PR #6](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/6) · `c063b1d` | HiveMQ: seis timestamps consecutivos 1795643206–1795643216, separados por 2 s de reloj del nodo, en versión consolidada | Integrante 2 (@educmz) | Integrante 1 |
+| F6 — N2-Secadores | Silenciosa | Paso 8: sensores y actuadores; R1 | Lectura original 8859.6 ppm con referencia de 400 ppm | Escalado lineal de ADC a ppm sin calibración | Interpolación de siete puntos; [PR #7](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/7) · `c126a2d` | Versión consolidada: 393.0, 1839.3 y 2500.0 ppm; balizas verde, amarilla y roja; referencias declaradas de 400, 1800 y 2500 ppm | Integrante 2 (@educmz) | Integrante 1 |
+| F7 — N2-Secadores | Seguridad | R9: autenticación e integridad | JSON con firma vacía | Ausencia de HMAC-SHA256 | Firma de id, ts y valor; [PR #8](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/8) · `bd5c1df` | HiveMQ recibió firmas de 16 caracteres en versión consolidada; aceptación y rechazo en N5 no evaluados | Integrante 2 (@educmz) | Integrante 1 |
+| F8 — N2-Secadores | Cruzada | Contrato de interfaz MQTT | Suscripción N5 incompatible con publicación N2 | N5 usa `upc/ga/+/dato` en vez de `upc/ga/+/datos` | Corrección en N5: suscripción en plural | HiveMQ confirma recepción en tópico de N2; prueba extremo a extremo no ejecutada | Integrantes 2 y 5 | Integrante 1 (bitácora N2) |
 | F9 — N3-Perimetro | Visible | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F10 — N3-Perimetro | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F11 — N3-Perimetro | Seguridad | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
@@ -69,7 +69,7 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 
 ### Hallazgo adicional N2
 
-EXTRA-N2-01: N2 y N3 usan `ga-sensor`; colisión confirmada en código, prueba simultánea pendiente. Propuesta: Client ID único por nodo y grupo. No sustituye F8.
+EXTRA-N2-01: N2 y N3 comparten `ga-sensor`. Se establece un identificador por grupo, nodo y MAC ([PR #9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/9), `ccbf176`). Conexión individual observada; ejecución simultánea no evaluada.
 
 ## Flujo de trabajo
 1. Guardar copia de Wokwi; subir código original a main antes de corregir, sin secretos.
