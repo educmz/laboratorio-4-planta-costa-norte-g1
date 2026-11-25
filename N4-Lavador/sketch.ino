@@ -12,7 +12,7 @@ const char* T_CONC   = "upc/ga/gateway/conc";
 const char* T_ESTADO = "upc/ga/lavador/estado";
 const char* T_ALERTA = "upc/ga/lavador/alerta";
 
-const int PIN_RELE   = 27;
+const int PIN_RELE   = 26;
 const int PIN_CONF   = 14;
 const int PIN_STEP   = 18;
 const int PIN_DIR    = 19;
@@ -101,6 +101,7 @@ void setup() {
   pinMode(PIN_CONF, INPUT);
   pinMode(PIN_STEP, OUTPUT);
   pinMode(PIN_DIR, OUTPUT);
+  digitalWrite(PIN_RELE, LOW);
   digitalWrite(PIN_DIR, HIGH);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   mqtt.setServer(BROKER, 1883);
