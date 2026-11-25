@@ -3,7 +3,8 @@
 Responsable: Gonzalo Aliaga, integrante 5 (integrador). Revisor: integrante 4.
 
 - [Wokwi original](https://wokwi.com/projects/481590098239821825)
-- Copia corregida: por registrar.
+- [Copia corregida](https://wokwi.com/projects/481701580182887425)
+- [Evidencias de pruebas](../evidencias/pruebas/N5-Gateway/)
 
 ## Qué hace el gateway
 
