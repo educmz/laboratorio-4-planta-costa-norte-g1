@@ -1,5 +1,5 @@
 // Planta Costa Norte - Nodo 5: Gateway (fog)
-// Instalacion heredada del proveedor anterior
+// Instalacion heredada del proveedor anterior, corregida por el grupo G1 (fallas F17 a F20)
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <HTTPClient.h>
@@ -45,6 +45,46 @@ String firmar(const String& m) {
   return String(h);
 }
 
+// ---------------- Ordenes firmadas hacia los nodos ----------------
+// Formato acordado con N4 (N4-Lavador/docs/INTEGRACION-N5.md):
+//   gateway|ts|cmd:ON|firma      gateway|ts|conc:2450.5|firma
+// firma = HMAC-SHA256("gateway|ts|contenido"), primeros 16 hex.
+// Cada receptor rechaza ts repetidos, por eso cada topico lleva su propio
+// contador estrictamente creciente.
+const char* T_CMD_LAVADOR = "upc/ga/lavador/cmd";
+const char* T_CMD_POZAS   = "upc/ga/pozas/cmd";
+const char* T_CONC        = "upc/ga/gateway/conc";
+const char* T_ALERTA_GW   = "upc/ga/gateway/alerta";
+long tsEnviadoLavador = 0, tsEnviadoPozas = 0, tsEnviadoConc = 0;
+
+bool publicarFirmado(const char* topico, const String& contenido, long& ultimoTs) {
+  long ts = time(nullptr);
+  if (ts < TS_MINIMO) {
+    Serial.println("NO ENVIADO (gateway sin hora NTP): " + contenido);
+    return false;
+  }
+  if (ts <= ultimoTs) ts = ultimoTs + 1;
+  ultimoTs = ts;
+  String base = "gateway|" + String(ts) + "|" + contenido;
+  return mqtt.publish(topico, (base + "|" + firmar(base)).c_str());   // sin retain
+}
+
+// ---------------- Lazo cerrado del lavador (R5) ----------------
+const unsigned long T_CONFIRMACION = 10000;   // ms
+unsigned long tOrdenOn = 0;
+bool esperandoConfirmacion = false, lavadorConfirmado = false, ventMaxActiva = false;
+unsigned long tReafirmar = 0;
+
+void respaldoFallaLavador(const String& origen) {
+  if (ventMaxActiva) return;
+  alerta = true;
+  ventMaxActiva = true;
+  esperandoConfirmacion = false;
+  Serial.println("ALERTA: falla del lavador (" + origen + "). Ventilacion de pozas al maximo");
+  mqtt.publish(T_ALERTA_GW, "{\"alerta\":\"falla del lavador\"}");
+  publicarFirmado(T_CMD_POZAS, "cmd:VENT:MAX", tsEnviadoPozas);
+}
+
 // Extrae el texto de un campo del JSON
 String campo(const String& m, const char* k) {
   String key = "\"" + String(k) + "\":";
@@ -70,13 +110,17 @@ void alRecibir(char* t, byte* p, unsigned int n) {
       Serial.println("ALERTA IGNORADA (no coincide con el estado del gateway): " + msg);
       return;
     }
-    alerta = true;
-    Serial.println("ALERTA: " + msg);
-    mqtt.publish("upc/ga/pozas/cmd", "VENT:MAX");   // respuesta de respaldo
+    respaldoFallaLavador("alerta de N4");
     return;
   }
   if (topico.endsWith("/estado")) {
     Serial.println("Estado lavador: " + msg);
+    bool confirma = msg.indexOf("\"CONFIRMADO\"") >= 0 || msg.indexOf("\"confirmado\":true") >= 0;
+    if (confirma && esperandoConfirmacion) {
+      esperandoConfirmacion = false;
+      lavadorConfirmado = true;
+      Serial.println("[LAZO] Lavador confirmado en " + String(millis() - tOrdenOn) + " ms desde la deteccion");
+    }
     return;
   }
 
@@ -209,17 +253,39 @@ void loop() {
     int confirmaciones = (okPozas && gasPozas > UMBRAL_GAS) + (okSecadores && gasSecadores > UMBRAL_GAS) +
                          (okPerimetro && gasPerimetro > UMBRAL_GAS);
     float conc = max(okPozas ? gasPozas : 0, max(okSecadores ? gasSecadores : 0, okPerimetro ? gasPerimetro : 0));
-    if (vigentes > 0) mqtt.publish("upc/ga/gateway/conc", String(conc, 1).c_str());
+    // N4 necesita la concentracion firmada para permitir el apagado (R7) y
+    // como senal de vida del gateway (R6).
+    if (vigentes > 0) publicarFirmado(T_CONC, "conc:" + String(conc, 1), tsEnviadoConc);
 
     // Regla combinada (fog)
     if (!lavadorOn && confirmaciones >= 2 && haciaComunidad) {
-      mqtt.publish("upc/ga/lavador/cmd", "ON", true);
+      publicarFirmado(T_CMD_LAVADOR, "cmd:ON", tsEnviadoLavador);
       lavadorOn = true;
-      Serial.println("Orden: lavador ON");
+      tOrdenOn = millis();
+      tReafirmar = millis();
+      esperandoConfirmacion = true;
+      lavadorConfirmado = false;
+      Serial.println("[LAZO] Deteccion: " + String(confirmaciones) + " nodos sobre umbral y viento " +
+                     String(viento) + " grados. Orden: lavador ON");
     } else if (lavadorOn && vigentes > 0 && conc < UMBRAL_GAS * 0.8) {   // sin datos vigentes no se apaga (R7)
-      mqtt.publish("upc/ga/lavador/cmd", "OFF", true);
+      publicarFirmado(T_CMD_LAVADOR, "cmd:OFF", tsEnviadoLavador);
       lavadorOn = false;
+      esperandoConfirmacion = false;
+      lavadorConfirmado = false;
       Serial.println("Orden: lavador OFF");
+      if (ventMaxActiva) {
+        ventMaxActiva = false;
+        publicarFirmado(T_CMD_POZAS, "cmd:VENT:NORMAL", tsEnviadoPozas);
+      }
+    } else if (lavadorOn && millis() - tReafirmar >= 10000) {
+      // Reafirma la orden: si N4 perdio el mensaje o se reinicio, vuelve a encender
+      tReafirmar = millis();
+      publicarFirmado(T_CMD_LAVADOR, "cmd:ON", tsEnviadoLavador);
+    }
+
+    // Lazo cerrado: sin confirmacion en 10 s, alerta y ventilacion maxima (R5)
+    if (esperandoConfirmacion && millis() - tOrdenOn > T_CONFIRMACION) {
+      respaldoFallaLavador("sin confirmacion en 10 s");
     }
 
     // Semaforo general de la planta
