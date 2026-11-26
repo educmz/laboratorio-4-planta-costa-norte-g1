@@ -80,3 +80,7 @@ OK perimetro: 2500.0 ppm
 ```
 
 El rechazo no interrumpió el procesamiento de otros datos legítimos. La orden ON no constituye por sí sola una confirmación física del lavador.
+
+## Repetición instrumentada
+
+[Capturas, lecturas y comparación de relojes del 26 de noviembre](N2-Secadores/INDICE.md).
