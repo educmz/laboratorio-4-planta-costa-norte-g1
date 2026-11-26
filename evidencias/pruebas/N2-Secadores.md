@@ -41,7 +41,7 @@ La referencia de cada escenario fue indicada durante la prueba; las capturas de 
 
 ## F7 — HMAC (R9)
 
-La versión consolidada genera firmas hexadecimales de 16 caracteres, observadas tanto en el monitor serial como en HiveMQ. La recepción por el broker no acredita por sí sola autenticación en N5.
+La versión consolidada genera firmas hexadecimales de 16 caracteres, observadas tanto en el monitor serial como en HiveMQ. La recepción por el broker se complementó con la validación en N5: las lecturas legítimas fueron aceptadas y el mensaje de prueba con firma inválida fue rechazado.
 
 ## F8 — Contrato MQTT
 
@@ -49,6 +49,34 @@ N2 publica en `upc/ga/secadores/datos`. La suscripción original de N5 termina e
 
 ## Alcance de la validación
 
-Las observaciones corresponden a la simulación consolidada de N2. La aceptación y rechazo de firmas en N5, la recepción extremo a extremo y la ejecución simultánea con N3 no se evaluaron en estas pruebas.
+Las observaciones corresponden a la simulación consolidada de N2. Se verificó posteriormente la recepción extremo a extremo, la aceptación de firmas legítimas y el rechazo de una firma inválida en N5. El registro también muestra recepción de N2 y N3 durante una misma ejecución. Las pruebas corresponden a la versión consolidada, no a compilaciones aisladas de cada rama.
 
 [Simulación N2](https://wokwi.com/projects/481603469063491585)
+
+## Registro de integración N2–N5
+
+El 26 de noviembre se observó en el monitor serial del Gateway:
+
+```text
+NTP sincronizado
+Gateway conectado
+OK secadores: 400.0 ppm
+OK pozas: 400.0 ppm
+OK perimetro: 400.0 ppm
+Nodos con datos vigentes: 3 (pozas si, secadores si, perimetro si)
+```
+
+Prueba de seguridad y concentración elevada (extracto del monitor serial):
+
+```text
+OK secadores: 400.0 ppm
+OK pozas: 2500.0 ppm
+OK perimetro: 2500.0 ppm
+OK secadores: 2500.0 ppm
+RECHAZADO (firma invalida): secadores
+[LAZO] Deteccion: 3 nodos sobre umbral y viento 135 grados. Orden: lavador ON
+OK pozas: 2500.0 ppm
+OK perimetro: 2500.0 ppm
+```
+
+El rechazo no interrumpió el procesamiento de otros datos legítimos. La orden ON no constituye por sí sola una confirmación física del lavador.
