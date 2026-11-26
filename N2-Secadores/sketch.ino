@@ -4,6 +4,7 @@
 #include <PubSubClient.h>
 #include "DHTesp.h"
 #include <time.h>
+#include <math.h>
 
 const char* T_DATOS = "upc/ga/secadores/datos";
 
@@ -14,6 +15,22 @@ const unsigned long PERIODO = 100;                         // ms entre publicaci
 WiFiClient net;
 PubSubClient mqtt(net);
 DHTesp dht;
+
+// F6: calibracion experimental ADC/ppm en Wokwi.
+const int NUM_PUNTOS = 7;
+const float PPM_REF[NUM_PUNTOS] = {100, 400, 1000, 1500, 2000, 2500, 5000};
+const int ADC_REF[NUM_PUNTOS] = {3337, 3635, 3762, 3811, 3839, 3861, 3916};
+
+float convertirGas(int adc) {
+  if (adc < ADC_REF[0] || adc > ADC_REF[NUM_PUNTOS - 1]) return NAN;
+  for (int i = 0; i < NUM_PUNTOS - 1; i++) {
+    if (adc >= ADC_REF[i] && adc <= ADC_REF[i + 1]) {
+      float p = float(adc - ADC_REF[i]) / float(ADC_REF[i + 1] - ADC_REF[i]);
+      return PPM_REF[i] + p * (PPM_REF[i + 1] - PPM_REF[i]);
+    }
+  }
+  return NAN;
+}
 
 void baliza(int r, int g, int b) {
   digitalWrite(PIN_R, r);
@@ -37,6 +54,7 @@ void setup() {
   pinMode(PIN_R, OUTPUT);
   pinMode(PIN_G, OUTPUT);
   pinMode(PIN_B, OUTPUT);
+  analogReadResolution(12);
   dht.setup(PIN_DHT, DHTesp::DHT22);
   WiFi.begin("Wokwi-GUEST", "");
   while (WiFi.status() != WL_CONNECTED) delay(200);
@@ -55,7 +73,16 @@ void loop() {
   if (millis() - tPub < PERIODO) return;
   tPub = millis();
 
-  float gas = analogRead(PIN_GAS) * 10000.0 / 4095.0;
+  int adcGas = analogRead(PIN_GAS);
+  float gas = convertirGas(adcGas);
+  Serial.println("ADC MQ-2: " + String(adcGas));
+  if (isnan(gas)) {
+    if (adcGas > ADC_REF[NUM_PUNTOS - 1]) baliza(1, 0, 0);
+    else baliza(0, 0, 1);
+    Serial.println("Gas fuera del rango calibrado");
+    return;
+  }
+  Serial.println("Gas calibrado: " + String(gas, 1) + " ppm");
   TempAndHumidity d = dht.getTempAndHumidity();
 
   // Baliza local (edge)
