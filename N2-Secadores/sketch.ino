@@ -24,8 +24,11 @@ void baliza(int r, int g, int b) {
 void conectar() {
   while (WiFi.status() != WL_CONNECTED) delay(200);
   while (!mqtt.connected()) {
-    if (mqtt.connect("ga-sensor")) {
+    // Identificador unico por grupo, nodo y MAC.
+    String id = "ga-secadores-" + WiFi.macAddress();
+    if (mqtt.connect(id.c_str())) {
       Serial.println("MQTT conectado");
+      Serial.println("Client ID: " + id);
     } else {
       delay(1000);
     }
