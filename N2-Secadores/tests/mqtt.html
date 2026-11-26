@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Secadores · Prueba MQTT</title>
+<style>
+body{font:16px system-ui;max-width:48rem;margin:2rem auto;padding:0 1rem;color:#18313b}label{display:block;margin:.8rem 0}input,button{font:inherit;padding:.4rem}input[type=url]{width:min(95%,26rem)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#edf3f3;padding:.8rem}
+</style>
+<h1>Prueba manual de Secadores</h1>
+<label>Broker WSS <input id="broker" type="url" value="wss://broker.hivemq.com:8884/mqtt"></label>
+<p>Tópico <code>upc/ga/secadores/datos</code> · QoS 0 · Sin retención</p>
+<label>Clave de la sesión <input id="key" type="password" autocomplete="off"></label>
+<label>Gas (ppm) <input id="gas" type="number" min="100" max="5000" step="0.1" value="400"></label>
+<label>Timestamp Unix <input id="ts" type="number" min="1" step="1"> <button id="now">Hora actual</button></label>
+<label><input id="negative" type="checkbox"> Alterar un dígito de la firma para la prueba de rechazo</label>
+<button id="verify">Verificar HMAC de referencia</button>
+<button id="preview">Generar JSON</button>
+<pre id="json" aria-live="polite"></pre>
+<button id="send">Publicar una vez</button>
+<pre id="log" aria-live="polite"></pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js" integrity="sha384-Wc5O7PtWSXXJ6LTS7Miij28L1Q3ip54+UlMs+FDhQw+Py1DmDbVCaan/v0WkAwOg" crossorigin="anonymous"></script>
+<script>
+const el = id => document.getElementById(id);
+const encoder = new TextEncoder();
+async function hmac(secret, text) {
+  const key = await crypto.subtle.importKey('raw', secret, {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+  const result = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(text)));
+  return Array.from(result.slice(0,8), b => b.toString(16).padStart(2,'0')).join('');
+}
+function log(message) { el('log').prepend(document.createTextNode(new Date().toISOString()+' '+message+'\n')); }
+function refreshTime() { el('ts').value = Math.floor(Date.now()/1000); }
+el('now').onclick = refreshTime;
+refreshTime();
+el('verify').onclick = async () => {
+  try {
+    const result = await hmac(new Uint8Array(20).fill(11), 'Hi There');
+    log(result === 'b0344c61d8db3853' ? 'RFC 4231, caso 1 correcto' : 'Error en el vector HMAC');
+  } catch (error) { log(error.message); }
+};
+async function payload() {
+  const secret = el('key').value;
+  const ts = el('ts').valueAsNumber;
+  const gas = el('gas');
+  if (!secret || !Number.isSafeInteger(ts) || ts<=0 || !gas.checkValidity() || !gas.value) throw Error('Revise la clave, la concentración y el timestamp.');
+  const valor = gas.valueAsNumber.toFixed(1);
+  let firma = await hmac(encoder.encode(secret), 'secadores|'+ts+'|'+valor);
+  if (el('negative').checked) firma = (firma[0]==='0'?'1':'0')+firma.slice(1);
+  // N5 utiliza el token decimal literal, incluido el cero final.
+  return '{"id":"secadores","ts":'+ts+',"valor":'+valor+',"unidad":"ppm","temp":24,"hum":40,"equipo":"Prueba manual","zona":"Secadores","responsable":"Laboratorio G1","calidad":"prueba","firma":"'+firma+'"}';
+}
+el('preview').onclick = async () => {
+  try { el('json').textContent = await payload(); } catch(error) { el('json').textContent=''; log(error.message); }
+};
+el('send').onclick = async () => {
+  el('send').disabled=true;
+  try {
+    const target=new URL(el('broker').value);
+    if(target.protocol!=='wss:') throw Error('Se requiere WSS.');
+    const msg=await payload();
+    el('json').textContent=msg;
+    const client=new Paho.Client(target.href, 'ga-n2-qa-'+crypto.randomUUID().slice(0,12));
+    await new Promise((ok,fail)=>client.connect({useSSL:true,timeout:8,reconnect:false,onSuccess:ok,onFailure:e=>fail(Error(e.errorMessage))}));
+    try {
+      client.send('upc/ga/secadores/datos',msg,0,false);
+      log('Entregado al cliente MQTT · '+target.host+' · '+msg);
+    } finally { client.disconnect(); }
+  } catch(error) { log(error.message); } finally { el('send').disabled=false; }
+};
+</script></html>
