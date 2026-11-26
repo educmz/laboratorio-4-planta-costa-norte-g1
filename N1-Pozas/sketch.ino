@@ -89,12 +89,11 @@ void loop() {
   float temp = sensor.getTempCByIndex(0);
 
   // Accion local (edge)
-  bool ventilar = false;
-  if (temp > UMBRAL_T) ventilar = true;
-  if (gas > umbralGas) ventilar = true; else ventilar = false;
-  if (ventMax) ventilar = true;
-  digitalWrite(PIN_VENT, ventilar);
-  if (gas > umbralGas) tone(PIN_BUZZER, 1000); else noTone(PIN_BUZZER);
+  bool gasAlto = gas > umbralGas;
+  bool temperaturaAlta = temp > UMBRAL_T;
+  bool ventilar = gasAlto || temperaturaAlta || ventMax;
+  digitalWrite(PIN_VENT, ventilar ? HIGH : LOW);
+  if (gasAlto) tone(PIN_BUZZER, 1000); else noTone(PIN_BUZZER);
 
   long ts = time(nullptr);
   String v = String(gas, 1) + "ppm";
