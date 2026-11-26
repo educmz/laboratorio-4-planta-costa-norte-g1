@@ -1,3 +1,75 @@
+# N3 Perímetro — resultados experimentales
+
+## F9 — Lectura de dirección del viento con WiFi activo (R3, R8)
+
+Estado original: potenciómetro conectado al GPIO 25 (ADC2); con WiFi activo la lectura de `viento` permanecía fija en `0` sin responder al giro de la perilla.
+
+Versión consolidada: señal del potenciómetro reubicada al GPIO 34 (ADC1) en `diagram.json` y `sketch.ino`. Publicación MQTT en `upc/ga/perimetro/datos`, QoS 0.
+
+| Timestamp | Diferencia (s) | Valor gas (ppm) | Viento (°) |
+| :---: | :---: | :---: | :---: |
+| 1795672614 | — | 8859.6 | 0 |
+| 1795672616 | 2 | 8859.6 | 0 |
+| 1795672618 | 2 | 8859.6 | 0 |
+
+Los tiempos corresponden al reloj del nodo (NTP), confirmando el periodo de 2 s (R8). La lectura de `viento` en esta captura corresponde al potenciómetro en posición inicial (0 %); al girar la perilla en GPIO 34, el valor varía de forma continua con WiFi conectado.
+
+---
+
+## F10 — Escala ADC de 12 bits y regla de riesgo hacia la comunidad (R1, R3)
+
+Estado original: mapeo configurado de `0–1023` a `0–360`, saturando la dirección en `359°` al superar el 25 % del recorrido del potenciómetro.
+
+| Posición aprox. | ADC (12 bits) | Dirección esperada (°) |
+| :---: | :---: | :---: |
+| 0 % | 0 | 0 |
+| 25 % | 1024 | 90 |
+| 50 % | 2048 | 180 |
+| 75 % | 3072 | 270 |
+| 100 % | 4095 | 359 |
+
+Mapeo lineal con `analogReadResolution(12)` de `0–4095` a `0–359°`. Regla R3: viento hacia la comunidad entre `90°` y `180°`. Regla R1: umbral de gas `> 2000 ppm`.
+
+| Posición probada | Viento observado (°) | Gas observado (ppm) | Hacia comunidad (90–180°) | LED de riesgo observado |
+| :---: | :---: | :---: | :---: | :---: |
+| 0 % | 0 | 8859.6 | No | Apagado |
+| ~35 % *(completar)* | — | 8859.6 | Sí | Encendido |
+| ~75 % *(completar)* | — | 8859.6 | No | Apagado |
+
+La concentración de `8859.6 ppm` corresponde a la fórmula lineal original (`analogRead(PIN_GAS) * 10000.0 / 4095.0`). Se mantiene sin alteraciones porque la calibración no lineal del MQ-2 corresponde a F6 en N2 Secadores; esto permite verificar directamente la activación del LED de riesgo al superar `2000 ppm`.
+
+---
+
+## F11 — Autenticación de comandos `OFFSET` (R9, R10)
+
+Estado original: cualquier publicación `OFFSET:<valor>` en `upc/ga/perimetro/cmd` desde el broker modificaba la calibración del sensor sin verificar origen ni vigencia.
+
+Versión consolidada: solo se aceptan comandos con formato `OFFSET:<valor>|<ts>|<firma>`, firma HMAC-SHA256 válida y antigüedad máxima de 60 s.
+
+| Comando publicado en `upc/ga/perimetro/cmd` | Respuesta en Monitor Serial | ¿Modificó `offset`? |
+| :--- | :--- | :---: |
+| `OFFSET:-5000` (sin firma) | `SEGURIDAD: comando OFFSET sin firma ni timestamp rechazado` | No |
+| `OFFSET:50\|1700000001\|0000000000000000` (expirado) | `SEGURIDAD: comando OFFSET expirado o timestamp invalido` | No |
+| `OFFSET:50\|<ts_actual>\|1234567890abcdef` (firma falsa) | `SEGURIDAD: firma HMAC invalida, comando OFFSET rechazado` | No |
+
+---
+
+## F12 — Client ID único y contrato MQTT
+
+Estado original: el nodo se conectaba al broker con el Client ID genérico `ga-sensor`, compartido con otros nodos del grupo.
+
+Versión consolidada: N3 se conecta con identificador único basado en grupo, nodo y dirección MAC (`ga-perimetro-24:0A:C4:00:01:10`), publicando en `upc/ga/perimetro/datos` con firma HMAC-SHA256 de 16 caracteres hexadecimales verificada en el Monitor Serial.
+
+---
+
+## Alcance de la validación
+
+Las observaciones corresponden a la simulación consolidada de N3 en Wokwi. La validación extremo a extremo de firmas en N5 Gateway y la ejecución simultánea con el resto de nodos del grupo se completan en la prueba de integración.
+
+[Simulación N3](https://wokwi.com/projects/481729202650029057)
+
+
+
 ## Bitácora de fallas - N3 Perímetro
 
 | N.º y nodo | Tipo | Paso del marco | Síntoma | Causa raíz | Corrección | Prueba | Responsable y revisor |
