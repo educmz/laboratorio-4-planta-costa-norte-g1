@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "author": "Proveedor anterior",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-gas-sensor",
+      "id": "gas",
+      "top": -180,
+      "left": 200,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "viento",
+      "top": -20,
+      "left": 260,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "riesgo",
+      "top": 140,
+      "left": 280,
+      "attrs": {
+        "color": "red"
+      }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "gas:VCC", "esp:3V3", "red", [] ],
+    [ "gas:GND", "esp:GND.1", "black", [] ],
+    [ "gas:AOUT", "esp:35", "orange", [] ],
+    [ "viento:VCC", "esp:3V3", "red", [] ],
+    [ "viento:GND", "esp:GND.1", "black", [] ],
+    [ "viento:SIG", "esp:34", "green", [] ],
+    [ "riesgo:A", "esp:18", "red", [] ],
+    [ "riesgo:C", "esp:GND.2", "black", [] ]
+  ],
+  "dependencies": {}
+}
