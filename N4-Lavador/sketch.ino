@@ -6,7 +6,7 @@
 #include <time.h>
 #include <math.h>
 #include <mbedtls/md.h>
-#include "secrets.h"
+
 // ================= CONFIGURACION =================
 
 const char* WIFI_SSID = "Wokwi-GUEST";
@@ -15,11 +15,13 @@ const char* BROKER = "broker.hivemq.com";
 
 // Reemplazar localmente por la clave acordada con N5.
 // No publicar la clave real en GitHub.
+const char* CLAVE = "costa-norte-ga-4817";
 
-const char* T_CMD    = "upc/ga-n4-test-481668300518825985/lavador/cmd";
-const char* T_CONC   = "upc/ga-n4-test-481668300518825985/gateway/conc";
-const char* T_ESTADO = "upc/ga-n4-test-481668300518825985/lavador/estado";
-const char* T_ALERTA = "upc/ga-n4-test-481668300518825985/lavador/alerta";
+// F16: integracion con N5-Gateway
+const char* T_CMD    = "upc/ga/lavador/cmd";
+const char* T_CONC   = "upc/ga/gateway/conc";
+const char* T_ESTADO = "upc/ga/lavador/estado";
+const char* T_ALERTA = "upc/ga/lavador/alerta";
 
 // ================= HARDWARE =================
 
@@ -30,7 +32,7 @@ const int PIN_STEP = 18;
 const int PIN_DIR  = 19;
 
 // Modulo Wokwi original con transistor NPN.
-// En la simulacion verificada, HIGH conecta COM con NO.
+// LOW conecta COM con NO.
 const int RELE_ON  = HIGH;
 const int RELE_OFF = LOW;
 
@@ -214,10 +216,16 @@ bool autenticar(
     ahora, timestamp, diferencia
   );
 
+  // F16: tolerancia temporal compatible con N5.
   if (timestamp < 1700000000L ||
-      diferencia < -5 ||
+      diferencia < -15 ||
       diferencia > 60) {
-    Serial.println("[SEGURIDAD] Timestamp invalido");
+
+    Serial.printf(
+      "[SEGURIDAD] Timestamp invalido. Desfase: %ld s\n",
+      diferencia
+    );
+
     return false;
   }
 
@@ -316,6 +324,9 @@ void alRecibir(
   }
 
   String topico(topic);
+
+  Serial.println("[RX MQTT] " + topico);
+
   String contenido;
   long ts = 0;
 
@@ -404,20 +415,15 @@ void mantenerConexion() {
   static bool ntpListo = false;
   static bool ntpIniciado = false;
   static unsigned long ultimoNTP = 0;
+  static unsigned long ultimoWiFi = 0;
 
   if (WiFi.status() != WL_CONNECTED) {
-    static unsigned long ultimoWiFi = 0;
 
     ntpIniciado = false;
     ntpListo = false;
 
     if (millis() - ultimoWiFi >= 10000) {
       ultimoWiFi = millis();
-
-      Serial.printf(
-        "[WIFI] Estado: %d\n",
-        (int) WiFi.status()
-      );
 
       Serial.println("[WIFI] Intentando reconectar");
       WiFi.reconnect();
@@ -426,24 +432,27 @@ void mantenerConexion() {
     return;
   }
 
-  // Sincronizar NTP cuando exista conexion WiFi.
-  if (time(nullptr) < 1700000000L) {
-    if (!ntpIniciado ||
-        millis() - ultimoNTP >= 15000) {
+  // F16: sincronizacion periodica de NTP.
+  if (!ntpIniciado ||
+      millis() - ultimoNTP >= 15000) {
 
-      ntpIniciado = true;
-      ultimoNTP = millis();
+    ntpIniciado = true;
+    ultimoNTP = millis();
 
-      configTime(
-        0, 0,
-        "pool.ntp.org",
-        "time.google.com",
-        "time.nist.gov"
-      );
+    configTime(
+      0, 0,
+      "pool.ntp.org",
+      "time.google.com",
+      "time.nist.gov"
+    );
 
-      Serial.println("[NTP] Sincronizando reloj...");
-    }
-  } else if (!ntpListo) {
+    Serial.printf(
+      "[NTP] Resincronizando. Reloj: %ld\n",
+      (long) time(nullptr)
+    );
+  }
+
+  if (time(nullptr) >= 1700000000L && !ntpListo) {
     ntpListo = true;
 
     Serial.printf(
@@ -452,7 +461,6 @@ void mantenerConexion() {
     );
   }
 
-  // Conexion MQTT.
   if (mqtt.connected()) return;
 
   if (millis() - ultimoIntento < T_RECONEXION) {
@@ -463,13 +471,29 @@ void mantenerConexion() {
 
   net.stop();
 
-  String id = "ga-n4-test-" + WiFi.macAddress();
+  String id = "ga-lavador-" + WiFi.macAddress();
 
   Serial.println("[MQTT] Intentando conectar");
 
   if (mqtt.connect(id.c_str())) {
-    mqtt.subscribe(T_CMD);
-    mqtt.subscribe(T_CONC);
+
+    bool subCmd = mqtt.subscribe(T_CMD);
+    bool subConc = mqtt.subscribe(T_CONC);
+
+    Serial.printf(
+      "[MQTT] Suscripcion CMD: %s\n",
+      subCmd ? "OK" : "ERROR"
+    );
+
+    Serial.printf(
+      "[MQTT] Suscripcion CONC: %s\n",
+      subConc ? "OK" : "ERROR"
+    );
+
+    if (!subCmd || !subConc) {
+      mqtt.disconnect();
+      return;
+    }
 
     publicar(
       T_ESTADO,
@@ -477,9 +501,13 @@ void mantenerConexion() {
     );
 
     Serial.println("[MQTT] Conectado");
+
   } else {
-    Serial.print("[MQTT] Error: ");
-    Serial.println(mqtt.state());
+
+    Serial.printf(
+      "[MQTT] Error: %d\n",
+      mqtt.state()
+    );
   }
 }
 // ================= LAZO CERRADO =================
@@ -625,7 +653,7 @@ void setup() {
   mqtt.setServer(BROKER, 1883);
   mqtt.setCallback(alRecibir);
   mqtt.setBufferSize(512);
-  mqtt.setKeepAlive(15);
+  mqtt.setKeepAlive(60);
   mqtt.setSocketTimeout(3);
 
   Serial.println("==============================");

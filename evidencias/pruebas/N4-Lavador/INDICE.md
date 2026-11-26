@@ -48,6 +48,29 @@ Commit: `5388fdd`.
 
 [Registro serial de seguridad](F15_Seguridad/Registro-serial-F15-completo.md).
 
+## F16 — Integración N4-Lavador y N5-Gateway
+
+Se realizó la integración entre N4 y N5 mediante el broker HiveMQ, utilizando el prefijo oficial `upc/ga/`, órdenes autenticadas mediante HMAC-SHA256 y sincronización periódica NTP.
+
+### Resultados experimentales
+
+- Recepción de concentraciones autenticadas de 400 ppm y 2500 ppm.
+- Activación del lavador mediante una orden autenticada del gateway.
+- Retorno al estado OFF durante el escenario normal.
+- Confirmación local de funcionamiento en 2460 ms.
+- Publicación del estado CONFIRMADO mediante MQTT.
+- Activación preventiva ante ausencia de mensajes válidos.
+
+### Evidencias
+
+- [Evidencias gráficas de F16](F16_Integracion/README.md).
+- [Registro serial completo](F16_Integracion/F16-Registro-serial-N4.md).
+
+La integración experimental se realizó con N4 y N5 ejecutados en Wokwi y los nodos sensores simulados mediante la herramienta HTML del gateway.
+
+El tiempo de confirmación registrado corresponde a la respuesta local de N4.
+
+
 ## Confirmación y alertas
 
 | Evidencia | Descripción |
