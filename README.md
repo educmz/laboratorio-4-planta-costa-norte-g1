@@ -11,7 +11,7 @@ Completar los nombres y confirmar la rotación de revisión antes del minuto 30 
 | Nodo | Responsable | Revisor | Wokwi original | Copia corregida |
 |---|---|---|---|---|
 | [N1-Pozas](N1-Pozas/) | Integrante 1 | Integrante 5 (propuesto) | [Original](https://wokwi.com/projects/481589788453665793) | Por registrar |
-| [N2-Secadores](N2-Secadores/) | Integrante 2 (@educmz) | Integrante 1 | [Original](https://wokwi.com/projects/481589874625672193) | [Copia de trabajo](https://wokwi.com/projects/481603469063491585) (sin corregir) |
+| [N2-Secadores](N2-Secadores/) | Integrante 2 (@educmz) | Integrante 1 | [Original](https://wokwi.com/projects/481589874625672193) | [Copia corregida](https://wokwi.com/projects/481603469063491585) |
 | [N3-Perimetro](N3-Perimetro/) | Integrante 3 | Integrante 2 | [Original](https://wokwi.com/projects/481589950905406465) | Por registrar |
 | [N4-Lavador](N4-Lavador/) | Fabricio Fabian Quispe Barzola — Integrante 4 | Integrante 3 | [Original](https://wokwi.com/projects/481590024229204993) | [Copia corregida](https://wokwi.com/projects/481668300518825985) |
 | [N5-Gateway](N5-Gateway/) | Gonzalo Aliaga — Integrante 5 (integrador) | Integrante 4 | [Original](https://wokwi.com/projects/481590098239821825) | [Copia corregida](https://wokwi.com/projects/481701580182887425) |
@@ -42,7 +42,7 @@ La revisión de N1 por el integrante 5 es una propuesta de cierre de rotación, 
 | R10 | Solo gateway autoriza órdenes y configuración |
 
 ## Bitácora de fallas
-Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar incidencia en Trello/Jira y evidencias antes/después.
+Registro de diagnóstico, correcciones y pruebas de la instalación.
 
 | ID y nodo | Tipo | Paso del marco | Síntoma | Causa raíz | Corrección y commit | Prueba | Responsable | Revisor |
 |---|---|---|---|---|---|---|---|---|
@@ -52,8 +52,8 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 | F4 — N1-Pozas | Cruzada | — | — | — | — | Sin ejecutar | Integrante 1 | Integrante 5 (propuesto) |
 | F5 — N2-Secadores | Visible | R8: periodicidad de datos | Mensajes repetidos en el mismo segundo | PERIODO = 100 ms | 2000 ms; [PR #6](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/6) · `c063b1d` | HiveMQ: seis timestamps consecutivos 1795643206–1795643216, separados por 2 s de reloj del nodo, en versión consolidada | Integrante 2 (@educmz) | Integrante 1 |
 | F6 — N2-Secadores | Silenciosa | Paso 8: sensores y actuadores; R1 | Lectura original 8859.6 ppm con referencia de 400 ppm | Escalado lineal de ADC a ppm sin calibración | Interpolación de siete puntos; [PR #7](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/7) · `c126a2d` | Versión consolidada: 393.0, 1839.3 y 2500.0 ppm; balizas verde, amarilla y roja; referencias declaradas de 400, 1800 y 2500 ppm | Integrante 2 (@educmz) | Integrante 1 |
-| F7 — N2-Secadores | Seguridad | R9: autenticación e integridad | JSON con firma vacía | Ausencia de HMAC-SHA256 | Firma de id, ts y valor; [PR #8](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/8) · `bd5c1df` | HiveMQ recibió firmas de 16 caracteres en versión consolidada; aceptación y rechazo en N5 no evaluados | Integrante 2 (@educmz) | Integrante 1 |
-| F8 — N2-Secadores | Cruzada | Contrato de interfaz MQTT | Suscripción N5 incompatible con publicación N2 | N5 usa `upc/ga/+/dato` en vez de `upc/ga/+/datos` | Corrección en N5: suscripción en plural (ver F17, `9ebf24c`) | HiveMQ confirma recepción en tópico de N2; prueba extremo a extremo no ejecutada | Integrantes 2 y 5 | Integrante 1 (bitácora N2) |
+| F7 — N2-Secadores | Seguridad | R9: autenticación e integridad | JSON con firma vacía | Ausencia de HMAC-SHA256 | Firma de id, ts y valor; [PR #8](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/8) · `bd5c1df` | HiveMQ recibió firmas de 16 caracteres; N5 aceptó lecturas legítimas y registró `RECHAZADO (firma invalida): secadores`. [Resultados](evidencias/pruebas/N2-Secadores.md) | Integrante 2 (@educmz) | Integrante 1 |
+| F8 — N2-Secadores | Cruzada | Contrato de interfaz MQTT | Suscripción N5 incompatible con publicación N2 | N5 usa `upc/ga/+/dato` en vez de `upc/ga/+/datos` | Corrección en N5: suscripción en plural (ver F17, `9ebf24c`) | N5 recibió `OK secadores: 400.0 ppm` y `OK secadores: 2500.0 ppm`; integración comprobada. [Resultados](evidencias/pruebas/N2-Secadores.md) | Integrantes 2 y 5 | Integrante 1 (bitácora N2) |
 | F9 — N3-Perimetro | Visible | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F10 — N3-Perimetro | Silenciosa | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
 | F11 — N3-Perimetro | Seguridad | — | — | — | — | Sin ejecutar | Integrante 3 | Integrante 2 |
@@ -69,7 +69,7 @@ Las filas son espacios de diagnóstico, no hallazgos confirmados. Registrar inci
 
 ### Hallazgo adicional N2
 
-EXTRA-N2-01: N2 y N3 comparten `ga-sensor`. Se establece un identificador por grupo, nodo y MAC ([PR #9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/9), `ccbf176`). Conexión individual observada; ejecución simultánea no evaluada.
+EXTRA-N2-01: N2 y N3 comparten `ga-sensor`. Se establece un identificador por grupo, nodo y MAC ([PR #9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/9), `ccbf176`). N5 recibió lecturas de N2 y N3 durante la misma ejecución; tres nodos con datos vigentes.
 
 ## Flujo de trabajo
 1. Guardar copia de Wokwi; subir código original a main antes de corregir, sin secretos.
