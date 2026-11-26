@@ -2,7 +2,7 @@
 
 Nodo de monitoreo ambiental de la línea de secado de harina de Planta Costa Norte (G1).
 
-**Responsable:** Eduardo Fabian Chacaliaza Minaya — Integrante 2.
+**Responsable:** Eduardo Chacaliaza — Integrante 2.
 
 ## Simulación
 
