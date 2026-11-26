@@ -224,9 +224,9 @@ void loop() {
   if (gasAlto) tone(PIN_BUZZER, 1000); else noTone(PIN_BUZZER);
 
   long ts = time(nullptr);
-  String v = String(gas, 1) + "ppm";
-  String msg = "{\"id\":\"pozas\",\"ts\":" + String(ts) + ",\"valor\":\"" + v +
-               "\",\"unidad\":\"ppm\",\"temp\":" + String(temp, 1) +
+  String v = String(gas, 1);
+  String msg = "{\"id\":\"pozas\",\"ts\":" + String(ts) + ",\"valor\":" + v +
+               ",\"unidad\":\"ppm\",\"temp\":" + String(temp, 1) +
                ",\"calidad\":\"ok\",\"firma\":\"" + firmar("pozas|" + String(ts) + "|" + v) + "\"}";
   mqtt.publish(T_DATOS, msg.c_str());
   Serial.println(msg);
