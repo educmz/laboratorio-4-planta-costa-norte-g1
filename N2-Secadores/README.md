@@ -2,6 +2,8 @@
 
 Nodo de monitoreo ambiental de la línea de secado de harina de Planta Costa Norte (G1).
 
+**Responsable:** Eduardo Fabian Chacaliaza Minaya — Integrante 2.
+
 ## Simulación
 
 - [Instalación original](https://wokwi.com/projects/481589874625672193)
@@ -18,13 +20,13 @@ Broker MQTT: `broker.hivemq.com:1883`. Tópico: `upc/ga/secadores/datos`. Public
 
 ## Auditoría
 
-| ID | Tipo | Corrección | Trazabilidad |
-|---|---|---|---|
-| F5 | Visible | Periodo de 100 a 2000 ms | [PR 6](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/6) |
-| F6 | Silenciosa | Interpolación de siete puntos experimentales ADC/ppm | [PR 7](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/7) |
-| F7 | Seguridad | Firma HMAC de id, timestamp y valor | [PR 8](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/8) |
-| F8 | Cruzada | Suscripción N5 a datos en plural | [Commit N5](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/9ebf24c) |
-| EXTRA-N2-01 | Adicional | Client ID diferenciado por nodo y MAC | [PR 9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/9) |
+| ID | Tipo | Paso del marco IoT | Corrección | Trazabilidad |
+|---|---|---|---|---|
+| F5 | Visible | Paso 4: Definición de los requisitos de la capa de intercambio (R8) | Periodo de 100 a 2000 ms | [PR 6](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/6) |
+| F6 | Silenciosa | Paso 10: Definición del procesamiento de datos en cada nodo y en la nube (R1) | Interpolación de siete puntos experimentales ADC/ppm | [PR 7](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/7) |
+| F7 | Seguridad | Paso 4: Definición de los requisitos de la capa de intercambio (R9) | Firma HMAC de id, timestamp y valor | [PR 8](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/8) |
+| F8 | Cruzada | Paso 7: Selección de las arquitecturas de intercambio de datos e integración de información | Suscripción N5 a datos en plural | [Commit N5](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/9ebf24c) |
+| EXTRA-N2-01 | Adicional | Paso 7: Selección de las arquitecturas de intercambio de datos e integración de información | Client ID diferenciado por nodo y MAC | [PR 9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/9) |
 
 ## Validación
 
