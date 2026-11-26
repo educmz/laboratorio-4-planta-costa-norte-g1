@@ -7,7 +7,7 @@ Nodo de monitoreo ambiental de la línea de secado de harina de Planta Costa Nor
 ## Simulación
 
 - [Instalación original](https://wokwi.com/projects/481589874625672193)
-- [Instalación corregida y validada](https://wokwi.com/projects/481603469063491585)
+- [Copia corregida de Wokwi](https://wokwi.com/projects/481603469063491585)
 - [Registro experimental e integración](../evidencias/pruebas/N2-Secadores.md)
 
 ## Hardware
@@ -32,7 +32,7 @@ Broker MQTT: `broker.hivemq.com:1883`. Tópico: `upc/ga/secadores/datos`. Public
 
 La versión consolidada de Wokwi publicó seis mensajes consecutivos con diferencias de 2 s en sus timestamps. Las pruebas de calibración produjeron 393.0, 1839.3 y 2500.0 ppm con balizas verde, amarilla y roja, respectivamente. El Gateway aceptó lecturas de Secadores de 400.0 y 2500.0 ppm y rechazó un mensaje con firma inválida. Los registros experimentales describen el alcance de la prueba.
 
-La integración al código principal se gestiona mediante los PR individuales y la revisión independiente. El firmware original permanece disponible en el historial de Git.
+El firmware consolidado se integró en `main` mediante el [PR #23](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/23). Los PR individuales conservan la trazabilidad de las correcciones; la aprobación formal independiente no consta en GitHub. El firmware heredado permanece en el historial.
 
 ## Arquitectura y conexiones
 
@@ -60,7 +60,7 @@ flowchart TD
 3. Iniciar N5 y N2 juntos, abrir el monitor a 115200 baudios y comprobar el estado de NTP. Durante el ensayo variar la concentración y comprobar el registro de aceptación en el receptor.
 4. Para reproducir la verificación local y usar el cliente manual, consultar el [protocolo de pruebas](docs/PRUEBAS.md).
 
-El cliente del ESP32 usa el puerto 1883 y el navegador usa WSS en 8884. El JSON contiene id, ts, valor, unidad, temp, hum, equipo, zona, responsable, calidad y firma. El campo `valor` conserva un decimal en el JSON y en el texto autenticado. El nodo no emite una lectura sin hora válida, con DHT inválido o con el gas fuera de la curva caracterizada.
+El cliente del ESP32 usa el puerto 1883 y el navegador usa WSS en 8884. El JSON contiene id, ts, valor, unidad, temp, hum, equipo, zona, responsable, calidad y firma. El campo `valor` conserva un decimal en el JSON y en el texto autenticado. La firma cubre únicamente `id`, `ts` y `valor`, conforme al contrato MQTT. El nodo no emite una lectura sin hora válida, con DHT inválido o con el gas fuera de la curva caracterizada.
 
 ## Control de versiones y alcance
 
@@ -72,7 +72,7 @@ El cliente del ESP32 usa el puerto 1883 y el navegador usa WSS en 8884. El JSON 
 | F8 | [tópico de N5](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/tree/bugfix/gateway-topico-datos) | [9ebf24c](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/9ebf24c) |
 | EXTRA | [identificador](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/tree/bugfix/secadores-client-id) | [ccbf176](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/commit/ccbf176) |
 
-Revisor asignado de N2: Pedro Nanfuñay. La [rama de integración](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/tree/integracion/secadores-n2) reúne el candidato ensayado. El circuito y las dependencias coinciden con la copia Wokwi publicada. Frente a esa copia, el candidato externaliza la clave, hace configurable el ajuste temporal e incorpora un tercer servidor y sincronización periódica. Se probó en una sesión temporal sin guardar cambios en los proyectos de origen.
+Revisor asignado de N2: Pedro Nanfuñay. La versión consolidada ensayada está disponible en `main` ([PR #23](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/23)). El circuito y las dependencias coinciden con la copia Wokwi publicada. La copia publicada de Wokwi y el firmware de `main` difieren en la gestión de credenciales y la configuración temporal. El firmware integrado externaliza la clave, utiliza ajuste temporal cero por defecto e incorpora un tercer servidor y sincronización periódica. Esta versión se verificó en una copia temporal de ensayo. La clave previamente expuesta en Wokwi requiere rotación coordinada del grupo.
 
 ## Resultados y conclusiones
 
