@@ -69,6 +69,8 @@ Registro de diagnóstico, correcciones y pruebas de la instalación. La numeraci
 
 ### Hallazgo adicional N2
 
+**Integración de N2:** [PR #23](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/23) incorporado a `main`; contiene el firmware consolidado y las evidencias. Los PR individuales conservan la trazabilidad de las correcciones sin aprobación formal registrada en GitHub.
+
 EXTRA-N2-01: N2 y N3 comparten `ga-sensor`. Se establece un identificador por grupo, nodo y MAC ([PR #9](https://github.com/educmz/laboratorio-4-planta-costa-norte-g1/pull/9), `ccbf176`). N5 recibió lecturas de N2 y N3 durante la misma ejecución; tres nodos con datos vigentes. Paso 7. [Prueba aislada de sesiones](evidencias/pruebas/N2-Secadores/EXTRA_Client_ID/ensayo-local.md).
 
 ## Flujo de trabajo
