@@ -24,6 +24,6 @@ La primera prueba compara el diagrama con los pines y compila las funciones real
 
 Servir la carpeta de pruebas con `python3 -m http.server 8000 --bind 127.0.0.1 --directory N2-Secadores/tests`. Abrir `http://localhost:8000/mqtt.html`. La clave se mantiene en memoria y la vista previa conserva un decimal. Seleccionar la hora, verificar el vector, generar el JSON y publicar una sola muestra durante la ventana coordinada del grupo. Comprobar el resultado en el monitor de N5. El cliente usa WSS y descarga Paho con integridad de recurso fijada.
 
-En esta sesión los ESP32 transmitieron a HiveMQ por MQTT. El cliente web de HiveMQ devolvió AMQJS0007E al intentar conectar a broker.hivemq.com:8884. La recepción gráfica por ese cliente queda pendiente. [Evidencias](../../evidencias/pruebas/N2-Secadores/INDICE.md).
+Los ESP32 transmitieron a HiveMQ por MQTT. El cliente web de HiveMQ devolvió `AMQJS0007E` al conectar a `broker.hivemq.com:8884`; por tanto, esa sesión no acredita recepción mediante dicho cliente. La aceptación de telemetría se verificó mediante el monitor serial de N5. [Evidencias](../../evidencias/pruebas/N2-Secadores/INDICE.md).
 
 Se ejercitó además el botón de publicación con Paho 1.1.0 y un broker Aedes 0.51.3 por WSS de bucle local. El broker recibió una única muestra de 400 ppm, QoS 0 y retain falso. Se utilizó una clave temporal de ensayo.
